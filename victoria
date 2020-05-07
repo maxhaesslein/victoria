@@ -1,0 +1,122 @@
+#!/usr/bin/python
+
+
+import glob
+import os
+import re
+import signal
+import time
+from sys import exit
+
+try:
+    import pygame
+except ImportError:
+    exit("This script requires the pygame module\nInstall with: sudo pip install pygame")
+
+import pianohat
+import drumhat
+
+DRUM_FOLDER = "sounds/drums2"
+BANK_PIANO = os.path.join(os.path.dirname(__file__), "sounds")
+BANK_DRUMS = os.path.join(os.path.dirname(__file__), DRUM_FOLDER)
+
+print("Press CTRL+C to exit.")
+
+NOTE_OFFSET = 3
+FILETYPES = ['*.wav', '*.ogg']
+samples_piano = []
+files_piano = []
+octave_piano = 0
+octaves_piano = 0
+
+pygame.mixer.pre_init(44100, -16, 1, 512)
+pygame.mixer.init()
+pygame.mixer.set_num_channels(32)
+
+patches_piano = glob.glob(os.path.join(BANK_PIANO, 'piano'))
+patch_index_piano = 0
+
+if len(patches_piano) == 0:
+    exit("Couldn't find any .wav files_piano in: {}".format(BANK_PIANO))
+
+
+files_drums = glob.glob(os.path.join(BANK_DRUMS, "*.wav"))
+files_drums.sort()
+
+samples_drums = [pygame.mixer.Sound(f) for f in files_drums]
+
+
+def natural_sort_key(s, _nsre=re.compile('([0-9]+)')):
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(_nsre, s)]
+
+
+def load_samples_piano(patch):
+    global samples_piano, files_piano, octaves_piano, octave_piano
+    files_piano = []
+    print('Loading Samples from: {}'.format(patch))
+    for filetype in FILETYPES:
+        files_piano.extend(glob.glob(os.path.join(patch, filetype)))
+    files_piano.sort(key=natural_sort_key)
+    octaves_piano = len(files_piano) / 12
+    samples_piano = [pygame.mixer.Sound(sample) for sample in files_piano]
+    octave_piano = int(octaves_piano / 2)
+
+
+pianohat.auto_leds(True)
+
+
+def handle_note(channel, pressed):
+    channel = channel + (12 * octave_piano)
+    if len(samples_piano) > 13:
+        channel += NOTE_OFFSET
+    if channel < len(samples_piano) and pressed:
+        print('Playing Sound: {}'.format(files_piano[channel]))
+        samples_piano[channel].play(loops=0)
+
+
+def handle_instrument(channel, pressed):
+    global patch_index_piano
+    if pressed:
+        patch_index_piano += 1
+        patch_index_piano %= len(patches_piano)
+        print('Selecting Patch: {}'.format(patches_piano[patch_index_piano]))
+        load_samples_piano(patches_piano[patch_index_piano])
+
+
+def handle_octave_up(channel, pressed):
+    global octave_piano
+    if pressed and octave_piano < octaves_piano:
+        octave_piano += 1
+        print('Selected Octave: {}'.format(octave_piano))
+
+
+def handle_octave_down(channel, pressed):
+    global octave_piano
+    if pressed and octave_piano > 0:
+        octave_piano -= 1
+        print('Selected Octave: {}'.format(octave_piano))
+
+
+
+# drums
+def handle_drums_hit(event):
+    # event.channel is a zero based channel index for each pad
+    # event.pad is the pad number from 1 to 8
+    samples_drums[event.channel].play(loops=0)
+    print("You hit pad {}, playing: {}".format(event.pad,files_drums[event.channel]))
+
+def handle_drums_release():
+    pass
+
+drumhat.on_hit(drumhat.PADS, handle_drums_hit)
+drumhat.on_release(drumhat.PADS, handle_drums_release)
+
+pianohat.on_note(handle_note)
+pianohat.on_octave_up(handle_octave_up)
+pianohat.on_octave_down(handle_octave_down)
+pianohat.on_instrument(handle_instrument)
+
+load_samples_piano(patches_piano[patch_index_piano])
+
+signal.pause()
+
