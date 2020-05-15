@@ -46,6 +46,7 @@ files_drums.sort()
 samples_drums = [pygame.mixer.Sound(f) for f in files_drums]
 
 
+
 def natural_sort_key(s, _nsre=re.compile('([0-9]+)')):
     return [int(text) if text.isdigit() else text.lower() for text in re.split(_nsre, s)]
 
@@ -62,7 +63,6 @@ def load_samples_piano(patch):
     octave_piano = int(octaves_piano / 2)
 
 
-pianohat.auto_leds(True)
 
 
 def handle_note(channel, pressed):
@@ -108,6 +108,21 @@ def handle_drums_hit(event):
 def handle_drums_release():
     pass
 
+
+pianohat.auto_leds(False)
+
+load_samples_piano(patches_piano[patch_index_piano])
+
+# ready-animation
+for i in range(0, 13):
+    pianohat.set_led(i, True)
+    time.sleep(0.05)
+time.sleep(0.2)
+for i in range(0, 16):
+    pianohat.set_led(i, False)
+
+pianohat.auto_leds(True)
+
 drumhat.on_hit(drumhat.PADS, handle_drums_hit)
 drumhat.on_release(drumhat.PADS, handle_drums_release)
 
@@ -116,7 +131,6 @@ pianohat.on_octave_up(handle_octave_up)
 pianohat.on_octave_down(handle_octave_down)
 pianohat.on_instrument(handle_instrument)
 
-load_samples_piano(patches_piano[patch_index_piano])
 
 signal.pause()
 
