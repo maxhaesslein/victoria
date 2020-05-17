@@ -20,6 +20,8 @@ DRUM_FOLDER = "sounds/drums2"
 BANK_PIANO = os.path.join(os.path.dirname(__file__), "sounds")
 BANK_DRUMS = os.path.join(os.path.dirname(__file__), DRUM_FOLDER)
 
+global_volume = 0.01
+
 print("Press CTRL+C to exit.")
 
 NOTE_OFFSET = 3
@@ -63,7 +65,12 @@ def load_samples_piano(patch):
     octave_piano = int(octaves_piano / 2)
 
 
-
+def set_all_volume():
+    print("set volume to "+str(global_volume))
+    for sound in samples_piano:
+        sound.set_volume( global_volume )
+    for sound in samples_drums:
+        sound.set_volume( global_volume )
 
 def handle_note(channel, pressed):
     channel = channel + (12 * octave_piano)
@@ -81,6 +88,7 @@ def handle_instrument(channel, pressed):
         patch_index_piano %= len(patches_piano)
         print('Selecting Patch: {}'.format(patches_piano[patch_index_piano]))
         load_samples_piano(patches_piano[patch_index_piano])
+        set_all_volume()
 
 
 def handle_octave_up(channel, pressed):
@@ -122,6 +130,8 @@ for i in range(0, 16):
     pianohat.set_led(i, False)
 
 pianohat.auto_leds(True)
+
+set_all_volume()
 
 drumhat.on_hit(drumhat.PADS, handle_drums_hit)
 drumhat.on_release(drumhat.PADS, handle_drums_release)
