@@ -19,7 +19,10 @@ import drumhat
 BANK_PIANO = os.path.join(os.path.dirname(__file__), "sounds/piano")
 BANK_DRUMS = os.path.join(os.path.dirname(__file__), "sounds/drums2")
 
-global_volume = 0.01
+volume_step = 1.0/13.0
+global_volume = volume_step * 1
+print("volume step", volume_step)
+print("global volume", global_volume)
 
 print("Press CTRL+C to exit.")
 
@@ -28,6 +31,7 @@ samples_piano = []
 files_piano = []
 octave_piano = 0
 octaves_piano = 0
+instrument_button_down = False
 
 pygame.mixer.pre_init(44100, -16, 1, 512)
 pygame.mixer.init()
@@ -46,6 +50,26 @@ files_drums = glob.glob(os.path.join(BANK_DRUMS, "*.wav"))
 files_drums.sort(key=natural_sort_key)
 samples_drums = [pygame.mixer.Sound(f) for f in files_drums]
 
+def set_volume( direction ):
+    global global_volume
+    if direction > 0:
+        global_volume += volume_step
+    elif direction < 0:
+        global_volume -= volume_step
+
+    if global_volume >= 1:
+        global_volume = 1.0
+    elif global_volume <= 0:
+        global_volume = 0.0
+
+    max_led = int(round(global_volume * 13))
+    for i in range(0, 13):
+        pianohat.set_led(i, False)
+    for i in range(0, max_led):
+        pianohat.set_led(i, True)
+
+    set_all_volume()
+
 def set_all_volume():
     print("set volume to "+str(global_volume))
     for sound in samples_piano:
@@ -63,24 +87,42 @@ def handle_note(channel, pressed):
 
 
 def handle_instrument(channel, pressed):
-    global patch_index_piano
-    print("instrument button pressed", channel, pressed)
+    global instrument_button_down
+    instrument_button_down = pressed
+
+    pianohat.set_led(13, False)
+    pianohat.set_led(14, False)
+    pianohat.set_led(15, False)
+
     if pressed:
-        patch_index_piano += 1
+        pianohat.auto_leds(False)
+        pianohat.set_led(channel, True)
+    else:
+        pianohat.auto_leds(True)
 
 
 def handle_octave_up(channel, pressed):
-    global octave_piano
-    if pressed and octave_piano < octaves_piano:
-        octave_piano += 1
-        print('Selected Octave: {}'.format(octave_piano))
+    if instrument_button_down:
+        pianohat.set_led(channel, pressed)
+        if pressed:
+            set_volume( +1 )
+    else:
+        global octave_piano
+        if pressed and octave_piano < octaves_piano:
+            octave_piano += 1
+            print('Selected Octave: {}'.format(octave_piano))
 
 
 def handle_octave_down(channel, pressed):
-    global octave_piano
-    if pressed and octave_piano > 0:
-        octave_piano -= 1
-        print('Selected Octave: {}'.format(octave_piano))
+    if instrument_button_down:
+        pianohat.set_led(channel, pressed)
+        if pressed:
+            set_volume( -1 )
+    else:
+        global octave_piano
+        if pressed and octave_piano > 0:
+            octave_piano -= 1
+            print('Selected Octave: {}'.format(octave_piano))
 
 
 
