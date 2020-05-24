@@ -5,7 +5,7 @@
 # by maxhaesslein, 2020
 # https://maxhaesslein.de
 #
-# v.1.0.0
+# v.1.1.0
 #########################
 
 
@@ -43,7 +43,7 @@ shutdown_button_counter = 0
 
 
 options = {
-        'samplerate': 48000,
+        'samplerate': 44100,
         'folder_piano': '/piano',
         'folder_drums': '/drums'
     }
