@@ -158,6 +158,13 @@ def handle_drums_release():
 
 def shutdown_action( skip_shutdown ):
     print( 'starting shut down ...')
+
+    pianohat.auto_leds(False)
+
+    for i in range(0, 16):
+        pianohat.set_led(i, False)
+    drumhat.all_off()
+
     if use_drive:
         print( 'unmounting '+str(MOUNT_PATH) )
         os.system( 'sudo umount '+str(MOUNT_PATH) )
@@ -195,10 +202,10 @@ files_drums = glob.glob(os.path.join(BANK_DRUMS, "*.wav"))
 files_drums.sort(key=natural_sort_key)
 samples_drums = [pygame.mixer.Sound(f) for f in files_drums]
 
-print(samples_piano)
-print(samples_drums)
-
 pianohat.auto_leds(False)
+
+for i in range(0, 16):
+    pianohat.set_led(i, False)
 
 # ready-animation
 for i in range(0, 13):
