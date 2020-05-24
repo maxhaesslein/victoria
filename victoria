@@ -87,9 +87,6 @@ pygame.mixer.pre_init(options['samplerate'], -16, 1, 512)
 pygame.mixer.init()
 pygame.mixer.set_num_channels(32)
 
-def natural_sort_key(s, _nsre=re.compile('([0-9]+)')):
-    return [int(text) if text.isdigit() else text.lower() for text in re.split(_nsre, s)]
-
 def set_volume( direction ):
     global global_volume
     if direction > 0:
@@ -230,7 +227,7 @@ def shutdown_action( skip_shutdown ):
 files_piano = []
 for filetype in FILETYPES:
     files_piano.extend(glob.glob(os.path.join(BANK_PIANO, filetype)))
-files_piano.sort(key=natural_sort_key)
+files_piano.sort()
 octaves_piano = len(files_piano) / 12
 samples_piano = [pygame.mixer.Sound(sample) for sample in files_piano]
 octave_piano = int(octaves_piano / 2)
@@ -238,7 +235,7 @@ octave_piano = int(octaves_piano / 2)
 files_drums = []
 for filetype in FILETYPES:
     files_drums.extend(glob.glob(os.path.join(BANK_DRUMS, filetype)))
-files_drums.sort(key=natural_sort_key)
+files_drums.sort()
 samples_drums = [pygame.mixer.Sound(f) for f in files_drums]
 
 pianohat.auto_leds(False)
