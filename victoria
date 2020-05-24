@@ -1,5 +1,13 @@
 #!/usr/bin/python
 
+#########################
+# Victoria
+# by maxhaesslein, 2020
+# https://maxhaesslein.de
+#
+# v.1.0.0
+#########################
+
 
 import glob
 import stat
