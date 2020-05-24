@@ -150,8 +150,11 @@ def handle_drums_hit(event):
             shutdown_action( False )
         return
 
-    samples_drums[event.channel].play(loops=0)
-    print("You hit pad {}, playing: {}".format(event.pad,files_drums[event.channel]))
+    try:
+        samples_drums[event.channel].play(loops=0)
+        print("You hit pad {}, playing: {}".format(event.pad,files_drums[event.channel]))
+    except IndexError:
+        print("Pad {} has no sound".format(event.pad))
 
 def handle_drums_release():
     pass
