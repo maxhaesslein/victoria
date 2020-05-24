@@ -20,7 +20,7 @@ BANK_PIANO = os.path.join(os.path.dirname(__file__), "sounds/piano")
 BANK_DRUMS = os.path.join(os.path.dirname(__file__), "sounds/drums2")
 
 volume_step = 1.0/13.0
-global_volume = volume_step * 1
+global_volume = 10.0/13.0
 print("volume step", volume_step)
 print("global volume", global_volume)
 
@@ -98,6 +98,13 @@ def handle_instrument(channel, pressed):
     if pressed:
         pianohat.auto_leds(False)
         pianohat.set_led(channel, True)
+
+        max_led = int(round(global_volume * 13))
+        for i in range(0, 13):
+            pianohat.set_led(i, False)
+        for i in range(0, max_led):
+            pianohat.set_led(i, True)
+
     else:
         pianohat.auto_leds(True)
         global shutdown_button_counter
