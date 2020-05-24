@@ -44,7 +44,6 @@ shutdown_button_counter = 0
 
 options = {
         'samplerate': 48000,
-        'channels': 1, # 1 = mono, 2 = stereo
         'folder_piano': '/piano',
         'folder_drums': '/drums'
     }
@@ -79,12 +78,12 @@ if use_drive and os.path.isfile(str(MOUNT_PATH)+'/config.txt'):
                 options[option] = False
             if options[option] == 'True':
                 options[option] = True
-            if option == 'samplerate' or option == 'channels':
+            if option == 'samplerate':
                 options[option] = int(options[option])
 
 print( 'options:', options )
 
-pygame.mixer.pre_init(options['samplerate'], -16, options['channels'], 512)
+pygame.mixer.pre_init(options['samplerate'], -16, 1, 512)
 pygame.mixer.init()
 pygame.mixer.set_num_channels(32)
 
