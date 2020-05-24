@@ -2,27 +2,25 @@
 
 
 import glob
+import stat
 import os
 import re
 import signal
 import time
 from sys import exit
-
-try:
-    import pygame
-except ImportError:
-    exit("This script requires the pygame module\nInstall with: sudo pip install pygame")
-
+import pygame
 import pianohat
 import drumhat
 
 BANK_PIANO = os.path.join(os.path.dirname(__file__), "sounds/piano")
 BANK_DRUMS = os.path.join(os.path.dirname(__file__), "sounds/drums2")
 
+MOUNT_PATH = '/mnt/victoria_usb'
+MOUNT_VOLUME = '/dev/sda1'
+use_drive = False # gets set to true if the volume is mounted
+
 volume_step = 1.0/13.0
 global_volume = 10.0/13.0
-print("volume step", volume_step)
-print("global volume", global_volume)
 
 print("Press CTRL+C to exit.")
 
@@ -40,16 +38,6 @@ pygame.mixer.set_num_channels(32)
 
 def natural_sort_key(s, _nsre=re.compile('([0-9]+)')):
     return [int(text) if text.isdigit() else text.lower() for text in re.split(_nsre, s)]
-
-files_piano = glob.glob(os.path.join(BANK_PIANO, "*.wav"))
-files_piano.sort(key=natural_sort_key)
-octaves_piano = len(files_piano) / 12
-samples_piano = [pygame.mixer.Sound(sample) for sample in files_piano]
-octave_piano = int(octaves_piano / 2)
-
-files_drums = glob.glob(os.path.join(BANK_DRUMS, "*.wav"))
-files_drums.sort(key=natural_sort_key)
-samples_drums = [pygame.mixer.Sound(f) for f in files_drums]
 
 def set_volume( direction ):
     global global_volume
@@ -158,8 +146,8 @@ def handle_drums_hit(event):
                 pianohat.set_led(i, False)
                 time.sleep(0.02)
             drumhat.all_off()
-            print("shut down ...")
-            os.system('sudo shutdown now')
+
+            shutdown_action( False )
         return
 
     samples_drums[event.channel].play(loops=0)
@@ -168,6 +156,47 @@ def handle_drums_hit(event):
 def handle_drums_release():
     pass
 
+def shutdown_action( skip_shutdown ):
+    print( 'starting shut down ...')
+    if use_drive:
+        print( 'unmounting '+str(MOUNT_PATH) )
+        os.system( 'sudo umount '+str(MOUNT_PATH) )
+
+    if not skip_shutdown:
+        print("shut down ...")
+        os.system('sudo shutdown now')
+
+def disk_exists(path):
+    try:
+            return stat.S_ISBLK(os.stat(path).st_mode)
+    except:
+            return False
+# check if usb thumb drive exists
+print( 'check if '+str(MOUNT_VOLUME)+' exists')
+if( disk_exists(MOUNT_VOLUME) ):
+    print('  yes')
+
+    # try to mount
+    os.system( 'sudo mount -o ro '+str(MOUNT_VOLUME)+' '+str(MOUNT_PATH) )
+    use_drive = True
+    BANK_PIANO = str(MOUNT_PATH)+"/sounds/piano"
+    BANK_DRUMS = str(MOUNT_PATH)+"/sounds/drums"
+
+else:
+    print('  no')
+
+files_piano = glob.glob(os.path.join(BANK_PIANO, "*.wav"))
+files_piano.sort(key=natural_sort_key)
+octaves_piano = len(files_piano) / 12
+samples_piano = [pygame.mixer.Sound(sample) for sample in files_piano]
+octave_piano = int(octaves_piano / 2)
+
+files_drums = glob.glob(os.path.join(BANK_DRUMS, "*.wav"))
+files_drums.sort(key=natural_sort_key)
+samples_drums = [pygame.mixer.Sound(f) for f in files_drums]
+
+print(samples_piano)
+print(samples_drums)
 
 pianohat.auto_leds(False)
 
@@ -191,6 +220,11 @@ pianohat.on_octave_up(handle_octave_up)
 pianohat.on_octave_down(handle_octave_down)
 pianohat.on_instrument(handle_instrument)
 
+def sigint_handler(signal_received, frame):
+    print('SIGINT or CTRL-C detected. Exiting gracefully')
+    shutdown_action( True )
+    exit(0)
+signal.signal(signal.SIGINT, sigint_handler) # capture ctrl+c
 
 signal.pause()
 
