@@ -25,6 +25,7 @@ BANK_DRUMS = os.path.join(os.path.dirname(__file__), "sounds/drums2")
 
 MOUNT_PATH = '/mnt/victoria_usb'
 MOUNT_VOLUME = '/dev/sda1'
+FILETYPES = ['*.wav', '*.WAV', '*.ogg', '*.OGG']
 use_drive = False # gets set to true if the volume is mounted
 
 volume_step = 1.0/13.0
@@ -39,6 +40,7 @@ octave_piano = 0
 octaves_piano = 0
 instrument_button_down = False
 shutdown_button_counter = 0
+
 
 options = {
         'samplerate': 48000,
@@ -226,13 +228,17 @@ def shutdown_action( skip_shutdown ):
         print("shut down ...")
         os.system('sudo shutdown now')
 
-files_piano = glob.glob(os.path.join(BANK_PIANO, "*.wav"))
+files_piano = []
+for filetype in FILETYPES:
+    files_piano.extend(glob.glob(os.path.join(BANK_PIANO, filetype)))
 files_piano.sort(key=natural_sort_key)
 octaves_piano = len(files_piano) / 12
 samples_piano = [pygame.mixer.Sound(sample) for sample in files_piano]
 octave_piano = int(octaves_piano / 2)
 
-files_drums = glob.glob(os.path.join(BANK_DRUMS, "*.wav"))
+files_drums = []
+for filetype in FILETYPES:
+    files_drums.extend(glob.glob(os.path.join(BANK_DRUMS, filetype)))
 files_drums.sort(key=natural_sort_key)
 samples_drums = [pygame.mixer.Sound(f) for f in files_drums]
 
