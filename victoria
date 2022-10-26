@@ -48,6 +48,7 @@ options = {
         'folder_drums': '/drums'
     }
 
+
 def disk_exists(path):
     try:
             return stat.S_ISBLK(os.stat(path).st_mode)
@@ -59,7 +60,9 @@ if( disk_exists(MOUNT_VOLUME) ):
     print('  yes')
 
     # try to mount
-    os.system( 'sudo mount -o ro '+str(MOUNT_VOLUME)+' '+str(MOUNT_PATH) )
+    #os.system( 'sudo mount -o ro '+str(MOUNT_VOLUME)+' '+str(MOUNT_PATH) )
+    # NOTE: mounting some usb devices as readonly may not work, so we removed the read only flag:
+    os.system( 'sudo mount '+str(MOUNT_VOLUME)+' '+str(MOUNT_PATH) )
     use_drive = True
     BANK_PIANO = str(MOUNT_PATH)+options['folder_piano']
     BANK_DRUMS = str(MOUNT_PATH)+options['folder_drums']
@@ -265,6 +268,8 @@ pianohat.on_instrument(handle_instrument)
 
 def sigint_handler(signal_received, frame):
     print('SIGINT or CTRL-C detected. Exiting gracefully')
+
+
     shutdown_action( True )
     exit(0)
 signal.signal(signal.SIGINT, sigint_handler) # capture ctrl+c
