@@ -5,7 +5,7 @@
 # by maxhaesslein, 2020-2022
 # https://maxhaesslein.de
 #############################
-version = "1.1.0"
+version = "2.dev.0"
 
 
 # this script gets started automatically on login via crontab.
@@ -52,11 +52,13 @@ options = {
         'samplerate': 44100,
         'folder_piano': '/piano',
         'folder_drums': '/drums',
-        'use_display': True
+        'channels': 32,
+        'use_display': True,
+        'fps': 30
     }
 
 
-display_content = "Hi!"
+display_content = [False, False]
 
 
 if options['use_display']:
@@ -80,17 +82,31 @@ if options['use_display']:
     draw = ImageDraw.Draw(image)
     draw.rectangle((0, 0, width, height), outline=0, fill=0)
     padding = -2
-    top = padding
-    bottom = height - padding
-    x = 0
     font = ImageFont.load_default()
 
     draw.rectangle((0, 0, width, height), outline=0, fill=0)
-    draw.text((x, top), "VICTORIA", font=font, fill=255)
-    draw.text((x, top + 8), "v."+str(version), font=font, fill=255)
+    
+    text = "V I C T O R I A"
+    (font_width, font_height) = font.getsize(text)
+    draw.text(
+        (disp.width // 2 - font_width // 2, 5),
+        text,
+        font=font,
+        fill=255,
+    )
+
+    text = "v."+str(version)
+    (font_width, font_height) = font.getsize(text)
+    draw.text(
+        (disp.width // 2 - font_width // 2, disp.height - font_height),
+        text,
+        font=font,
+        fill=255,
+    )
+
     disp.image(image)
     disp.show()
-    time.sleep(0.1)
+    time.sleep(0.2)
 
 
 def disk_exists(path):
@@ -98,15 +114,17 @@ def disk_exists(path):
             return stat.S_ISBLK(os.stat(path).st_mode)
     except:
             return False
+
+
 # check if usb thumb drive exists
 print( 'check if '+str(MOUNT_VOLUME)+' exists')
 if( disk_exists(MOUNT_VOLUME) ):
     print('  yes')
 
     # try to mount
-    #os.system( 'sudo mount -o ro '+str(MOUNT_VOLUME)+' '+str(MOUNT_PATH) )
+    os.system( 'sudo mount -o ro '+str(MOUNT_VOLUME)+' '+str(MOUNT_PATH) )
     # NOTE: mounting some usb devices as readonly may not work, so we removed the read only flag:
-    os.system( 'sudo mount '+str(MOUNT_VOLUME)+' '+str(MOUNT_PATH) )
+    #os.system( 'sudo mount '+str(MOUNT_VOLUME)+' '+str(MOUNT_PATH) )
     use_drive = True
     BANK_PIANO = str(MOUNT_PATH)+options['folder_piano']
     BANK_DRUMS = str(MOUNT_PATH)+options['folder_drums']
@@ -125,14 +143,22 @@ if use_drive and os.path.isfile(str(MOUNT_PATH)+'/config.txt'):
                 options[option] = False
             if options[option] == 'True':
                 options[option] = True
-            if option == 'samplerate':
+            if option == 'samplerate' or option == 'channels':
                 options[option] = int(options[option])
 
 print( 'options:', options )
 
 pygame.mixer.pre_init(options['samplerate'], -16, 1, 512)
 pygame.mixer.init()
-pygame.mixer.set_num_channels(32)
+pygame.mixer.set_num_channels(options['channels'])
+
+
+def set_display( line1 = False, line2 = False ):
+    global display_content
+
+    display_content[0] = line1
+    display_content[1] = line2
+
 
 def set_volume( direction ):
     global global_volume
@@ -155,9 +181,8 @@ def set_volume( direction ):
     set_all_volume()
 
 def set_all_volume():
-    global display_content
     print("set volume to "+str(global_volume))
-    display_content = "set volume to "+str(round(global_volume, 2))
+    set_display("volume: "+str(round(global_volume*100))+"%")
     for sound in samples_piano:
         sound.set_volume( global_volume )
     for sound in samples_drums:
@@ -170,19 +195,17 @@ def get_filename(path):
 
 
 def handle_note(channel, pressed):
-    global display_content
     channel = channel + (12 * octave_piano)
     if len(samples_piano) > 13:
         channel += NOTE_OFFSET
     if channel < len(samples_piano) and pressed:
         print('Playing Sound: {}'.format(files_piano[channel]))
-        display_content = "#{} / {}".format(channel,get_filename(files_piano[channel]))
+        set_display( "Piano #{}".format(channel), get_filename(files_piano[channel]) )
         samples_piano[channel].play(loops=0)
 
 
 def handle_instrument(channel, pressed):
     global instrument_button_down
-    global display_content
     instrument_button_down = pressed
 
     pianohat.set_led(13, False)
@@ -208,7 +231,6 @@ def handle_instrument(channel, pressed):
 
 
 def handle_octave_up(channel, pressed):
-    global display_content
     if instrument_button_down:
         pianohat.set_led(channel, pressed)
         if pressed:
@@ -218,11 +240,10 @@ def handle_octave_up(channel, pressed):
         if pressed and octave_piano < octaves_piano:
             octave_piano += 1
             print('piano set: {}'.format(octave_piano))
-            display_content = "piano set: {}".format(octave_piano+1)
+            set_display( "piano set: {}".format(octave_piano+1) )
 
 
 def handle_octave_down(channel, pressed):
-    global display_content
     if instrument_button_down:
         pianohat.set_led(channel, pressed)
         if pressed:
@@ -232,13 +253,12 @@ def handle_octave_down(channel, pressed):
         if pressed and octave_piano > 0:
             octave_piano -= 1
             print('piano set: {}'.format(octave_piano))
-            display_content = "piano set: {}".format(octave_piano+1)
+            set_display( "piano set: {}".format(octave_piano+1) )
 
 
 
 # drums
 def handle_drums_hit(event):
-    global display_content
     # event.channel is a zero based channel index for each pad
     # event.pad is the pad number from 1 to 8
 
@@ -264,10 +284,10 @@ def handle_drums_hit(event):
     try:
         samples_drums[event.channel].play(loops=0)
         print("You hit pad {}, playing: {}".format(event.pad,files_drums[event.channel]))
-        display_content = "Pad {} / {}".format(event.pad, get_filename(files_drums[event.channel]))
+        set_display( "Pad {}".format(event.pad), get_filename(files_drums[event.channel]) )
     except IndexError:
         print("Pad {} has no sound".format(event.pad))
-        display_content = "Pad {} has no sound".format(event.pad)
+        set_display( "Pad {} has no sound".format(event.pad) )
 
 def handle_drums_release():
     pass
@@ -281,16 +301,24 @@ def shutdown_action( skip_shutdown ):
 
     if options['use_display']:
         draw.rectangle((0, 0, width, height), outline=0, fill=0)
-        draw.text((0,0), "bye!", font=font, fill=255)
+
+        text = "bye!"
+        (font_width, font_height) = font.getsize(text)
+        draw.text(
+            (disp.width // 2 - font_width // 2, disp.height // 2 - font_height // 2),
+            text,
+            font=font,
+            fill=255,
+        )
+
         disp.image(image)
         disp.show()
-        time.sleep(0.5)
+        time.sleep(0.1)
 
     print("mixer fadeout (1s)")
     pygame.mixer.fadeout(1000)
     time.sleep(1)
     pygame.mixer.quit()
-
 
     print("pianohat: set leds to off")
     pianohat.auto_leds(False)
@@ -311,7 +339,6 @@ def shutdown_action( skip_shutdown ):
 
     if use_drive:
         print( 'unmounting '+str(MOUNT_PATH) )
-        time.sleep(500)
         os.system( 'sudo umount '+str(MOUNT_PATH) )
 
     if not skip_shutdown:
@@ -335,6 +362,12 @@ for filetype in FILETYPES:
 files_drums.sort()
 samples_drums = [pygame.mixer.Sound(f) for f in files_drums]
 
+
+set_all_volume()
+
+set_display( "Piano: "+str(len(files_piano))+" samples", "DrumHat: "+str(len(files_drums))+" samples")
+
+
 pianohat.auto_leds(False)
 
 for i in range(0, 16):
@@ -350,8 +383,6 @@ for i in range(0, 16):
 
 pianohat.auto_leds(True)
 
-set_all_volume()
-
 drumhat.on_hit(drumhat.PADS, handle_drums_hit)
 drumhat.on_release(drumhat.PADS, handle_drums_release)
 
@@ -359,7 +390,6 @@ pianohat.on_note(handle_note)
 pianohat.on_octave_up(handle_octave_up)
 pianohat.on_octave_down(handle_octave_down)
 pianohat.on_instrument(handle_instrument)
-
 
 
 def sigint_handler(signal_received, frame):
@@ -376,16 +406,20 @@ if options['use_display']:
 
         cmd = 'cut -f 1 -d " " /proc/loadavg'
         CPU = subprocess.check_output(cmd, shell=True).decode("utf-8")
-        cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%s MB  %.2f%%\", $3,$2,$3*100/$2 }'"
+        cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%sMB %.2f%%\", $3,$2,$3*100/$2 }'"
         MemUsage = subprocess.check_output(cmd, shell=True).decode("utf-8")
 
-        draw.text((x, top), "CPU: " + CPU, font=font, fill=255)
-        draw.text((x, top + 8), MemUsage, font=font, fill=255)
-        draw.text((x, top + 24), display_content, font=font, fill=255)
+        top = -1
+        draw.text((0, top+0), "CPU: " + CPU, font=font, fill=255)
+        draw.text((0, top+8), MemUsage, font=font, fill=255)
+        if display_content[0]:
+            draw.text((0, top+16), display_content[0], font=font, fill=255)
+        if display_content[1]:
+            draw.text((0, top+24), display_content[1], font=font, fill=255)
 
         disp.image(image)
         disp.show()
-        time.sleep(0.001)
+        time.sleep(1/options['fps'])
 
 
 signal.pause()
