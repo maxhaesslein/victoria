@@ -4,9 +4,8 @@
 # Victoria
 # by maxhaesslein, 2020-2022
 # https://maxhaesslein.de
-#
-# v.1.1.0
 #############################
+version = "1.1.0"
 
 
 # this script gets started automatically on login via crontab.
@@ -36,6 +35,8 @@ use_drive = False # gets set to true if the volume is mounted
 volume_step = 1.0/13.0
 global_volume = 10.0/13.0
 
+running = True
+
 print("Press CTRL+C to exit.")
 
 NOTE_OFFSET = 3
@@ -53,6 +54,9 @@ options = {
         'folder_drums': '/drums',
         'use_display': True
     }
+
+
+display_content = "Hi!"
 
 
 if options['use_display']:
@@ -80,6 +84,13 @@ if options['use_display']:
     bottom = height - padding
     x = 0
     font = ImageFont.load_default()
+
+    draw.rectangle((0, 0, width, height), outline=0, fill=0)
+    draw.text((x, top), "VICTORIA", font=font, fill=255)
+    draw.text((x, top + 8), "v."+str(version), font=font, fill=255)
+    disp.image(image)
+    disp.show()
+    time.sleep(0.1)
 
 
 def disk_exists(path):
@@ -144,23 +155,34 @@ def set_volume( direction ):
     set_all_volume()
 
 def set_all_volume():
+    global display_content
     print("set volume to "+str(global_volume))
+    display_content = "set volume to "+str(round(global_volume, 2))
     for sound in samples_piano:
         sound.set_volume( global_volume )
     for sound in samples_drums:
         sound.set_volume( global_volume )
 
+
+def get_filename(path):
+    filename = os.path.basename(path)
+    return filename
+
+
 def handle_note(channel, pressed):
+    global display_content
     channel = channel + (12 * octave_piano)
     if len(samples_piano) > 13:
         channel += NOTE_OFFSET
     if channel < len(samples_piano) and pressed:
         print('Playing Sound: {}'.format(files_piano[channel]))
+        display_content = "#{} / {}".format(channel,get_filename(files_piano[channel]))
         samples_piano[channel].play(loops=0)
 
 
 def handle_instrument(channel, pressed):
     global instrument_button_down
+    global display_content
     instrument_button_down = pressed
 
     pianohat.set_led(13, False)
@@ -186,6 +208,7 @@ def handle_instrument(channel, pressed):
 
 
 def handle_octave_up(channel, pressed):
+    global display_content
     if instrument_button_down:
         pianohat.set_led(channel, pressed)
         if pressed:
@@ -194,10 +217,12 @@ def handle_octave_up(channel, pressed):
         global octave_piano
         if pressed and octave_piano < octaves_piano:
             octave_piano += 1
-            print('Selected Octave: {}'.format(octave_piano))
+            print('piano set: {}'.format(octave_piano))
+            display_content = "piano set: {}".format(octave_piano+1)
 
 
 def handle_octave_down(channel, pressed):
+    global display_content
     if instrument_button_down:
         pianohat.set_led(channel, pressed)
         if pressed:
@@ -206,12 +231,14 @@ def handle_octave_down(channel, pressed):
         global octave_piano
         if pressed and octave_piano > 0:
             octave_piano -= 1
-            print('Selected Octave: {}'.format(octave_piano))
+            print('piano set: {}'.format(octave_piano))
+            display_content = "piano set: {}".format(octave_piano+1)
 
 
 
 # drums
 def handle_drums_hit(event):
+    global display_content
     # event.channel is a zero based channel index for each pad
     # event.pad is the pad number from 1 to 8
 
@@ -237,35 +264,62 @@ def handle_drums_hit(event):
     try:
         samples_drums[event.channel].play(loops=0)
         print("You hit pad {}, playing: {}".format(event.pad,files_drums[event.channel]))
+        display_content = "Pad {} / {}".format(event.pad, get_filename(files_drums[event.channel]))
     except IndexError:
         print("Pad {} has no sound".format(event.pad))
+        display_content = "Pad {} has no sound".format(event.pad)
 
 def handle_drums_release():
     pass
 
 def shutdown_action( skip_shutdown ):
+    global running
     print( 'starting shut down ...')
 
+    running = False
+    time.sleep(0.4)
+
     if options['use_display']:
+        draw.rectangle((0, 0, width, height), outline=0, fill=0)
+        draw.text((0,0), "bye!", font=font, fill=255)
+        disp.image(image)
+        disp.show()
+        time.sleep(0.5)
+
+    print("mixer fadeout (1s)")
+    pygame.mixer.fadeout(1000)
+    time.sleep(1)
+    pygame.mixer.quit()
+
+
+    print("pianohat: set leds to off")
+    pianohat.auto_leds(False)
+    for i in range(0, 16):
+        pianohat.set_led(i, False)
+
+    print( "drumhat: set leds to off")
+    drumhat.all_off()
+
+
+    if options['use_display']:
+        print("clear display")
         # clear display:
-        print( 'clear display' )
         draw.rectangle((0, 0, width, height), outline=0, fill=0)
         disp.image(image)
         disp.show()
 
-    pianohat.auto_leds(False)
-
-    for i in range(0, 16):
-        pianohat.set_led(i, False)
-    drumhat.all_off()
 
     if use_drive:
         print( 'unmounting '+str(MOUNT_PATH) )
+        time.sleep(500)
         os.system( 'sudo umount '+str(MOUNT_PATH) )
 
     if not skip_shutdown:
-        print("shut down ...")
+        print("shut down system ...")
         os.system('sudo shutdown now')
+
+    print("end program. bye.")
+
 
 files_piano = []
 for filetype in FILETYPES:
@@ -316,20 +370,22 @@ def sigint_handler(signal_received, frame):
 signal.signal(signal.SIGINT, sigint_handler) # capture ctrl+c
 
 
-while True:
-    draw.rectangle((0, 0, width, height), outline=0, fill=0)
+if options['use_display']:
+    while running:
+        draw.rectangle((0, 0, width, height), outline=0, fill=0)
 
-    cmd = 'cut -f 1 -d " " /proc/loadavg'
-    CPU = subprocess.check_output(cmd, shell=True).decode("utf-8")
-    cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%s MB  %.2f%%\", $3,$2,$3*100/$2 }'"
-    MemUsage = subprocess.check_output(cmd, shell=True).decode("utf-8")
+        cmd = 'cut -f 1 -d " " /proc/loadavg'
+        CPU = subprocess.check_output(cmd, shell=True).decode("utf-8")
+        cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%s MB  %.2f%%\", $3,$2,$3*100/$2 }'"
+        MemUsage = subprocess.check_output(cmd, shell=True).decode("utf-8")
 
-    draw.text((x, top), "CPU: " + CPU, font=font, fill=255)
-    draw.text((x, top + 8), MemUsage, font=font, fill=255)
+        draw.text((x, top), "CPU: " + CPU, font=font, fill=255)
+        draw.text((x, top + 8), MemUsage, font=font, fill=255)
+        draw.text((x, top + 24), display_content, font=font, fill=255)
 
-    disp.image(image)
-    disp.show()
-    time.sleep(0.001)
+        disp.image(image)
+        disp.show()
+        time.sleep(0.001)
 
 
 signal.pause()
