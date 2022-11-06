@@ -71,8 +71,8 @@ else:
     print('  no')
 
 if use_drive and os.path.isfile(str(MOUNT_PATH)+'/config.txt'):
-    import ConfigParser
-    configParser = ConfigParser.RawConfigParser()
+    import configparser
+    configParser = configparser.RawConfigParser()
     configParser.read( str(MOUNT_PATH)+'/config.txt' )
     for option in options:
         if configParser.has_option('Victoria', option):
