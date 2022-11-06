@@ -1,12 +1,17 @@
 #!/usr/bin/python
 
-#########################
+#############################
 # Victoria
-# by maxhaesslein, 2020
+# by maxhaesslein, 2020-2022
 # https://maxhaesslein.de
 #
 # v.1.1.0
-#########################
+#############################
+
+
+# this script gets started automatically on login via crontab.
+# user 'crontab' -e and add:
+# @reboot ~/victoria/victoria
 
 
 import glob
@@ -45,8 +50,36 @@ shutdown_button_counter = 0
 options = {
         'samplerate': 44100,
         'folder_piano': '/piano',
-        'folder_drums': '/drums'
+        'folder_drums': '/drums',
+        'use_display': True
     }
+
+
+if options['use_display']:
+    # init the display
+
+    print( 'using display' )
+
+    import subprocess
+    from board import SCL, SDA
+    import busio
+    from PIL import Image, ImageDraw, ImageFont
+    import adafruit_ssd1306
+
+    i2c = busio.I2C(SCL, SDA)
+    disp = adafruit_ssd1306.SSD1306_I2C(128, 32, i2c)
+    disp.fill(0)
+    disp.show()
+    width = disp.width
+    height = disp.height
+    image = Image.new("1", (width, height))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, width, height), outline=0, fill=0)
+    padding = -2
+    top = padding
+    bottom = height - padding
+    x = 0
+    font = ImageFont.load_default()
 
 
 def disk_exists(path):
@@ -213,6 +246,13 @@ def handle_drums_release():
 def shutdown_action( skip_shutdown ):
     print( 'starting shut down ...')
 
+    if options['use_display']:
+        # clear display:
+        print( 'clear display' )
+        draw.rectangle((0, 0, width, height), outline=0, fill=0)
+        disp.image(image)
+        disp.show()
+
     pianohat.auto_leds(False)
 
     for i in range(0, 16):
@@ -266,13 +306,30 @@ pianohat.on_octave_up(handle_octave_up)
 pianohat.on_octave_down(handle_octave_down)
 pianohat.on_instrument(handle_instrument)
 
+
+
 def sigint_handler(signal_received, frame):
     print('SIGINT or CTRL-C detected. Exiting gracefully')
-
-
     shutdown_action( True )
     exit(0)
+
 signal.signal(signal.SIGINT, sigint_handler) # capture ctrl+c
 
-signal.pause()
 
+while True:
+    draw.rectangle((0, 0, width, height), outline=0, fill=0)
+
+    cmd = 'cut -f 1 -d " " /proc/loadavg'
+    CPU = subprocess.check_output(cmd, shell=True).decode("utf-8")
+    cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%s MB  %.2f%%\", $3,$2,$3*100/$2 }'"
+    MemUsage = subprocess.check_output(cmd, shell=True).decode("utf-8")
+
+    draw.text((x, top), "CPU: " + CPU, font=font, fill=255)
+    draw.text((x, top + 8), MemUsage, font=font, fill=255)
+
+    disp.image(image)
+    disp.show()
+    time.sleep(0.001)
+
+
+signal.pause()
