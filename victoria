@@ -289,9 +289,11 @@ def handle_drums_hit(event):
         samples_drums[event.channel].play(loops=0)
         print("You hit pad {}, playing: {}".format(event.pad,files_drums[event.channel]))
         set_display( "Pad {}".format(event.pad), get_filename(files_drums[event.channel]) )
+        #drumhat.led_on(event.pad) # TODO: uncomment this for new LED behavior
     except IndexError:
         print("Pad {} has no sound".format(event.pad))
         set_display( "Pad {} has no sound".format(event.pad) )
+        drumhat.led_off(event.pad)
 
 def handle_drums_release():
     pass
@@ -385,7 +387,9 @@ time.sleep(0.2)
 for i in range(0, 16):
     pianohat.set_led(i, False)
 
-pianohat.auto_leds(True)
+pianohat.auto_leds(True) # TODO: do we want auto_leds?
+
+# drumhat.auto_leds = False # TODO: uncomment this for new LED behavior
 
 drumhat.on_hit(drumhat.PADS, handle_drums_hit)
 drumhat.on_release(drumhat.PADS, handle_drums_release)
@@ -423,6 +427,13 @@ if options['use_display']:
 
         disp.image(image)
         disp.show()
+
+
+        # TODO: loop over leds to see if we need to disable a led
+        # see if pygame.mixer.Channel(channel_index).get_busy() is False,
+        # then call: drumhat.led_off(drumhat.NUMMAP[channel])
+
+
         time.sleep(1/options['fps'])
 
 
