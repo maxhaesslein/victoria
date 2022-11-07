@@ -204,8 +204,8 @@ def handle_note(channel, pressed):
             set_display( "Piano #{}".format(channel), get_filename(files_piano[channel]) )
             samples_piano[channel].play(loops=0)
         else:
-            print('No sound at '.str(channel))
-            set_display( "no sound at ".str(channel))
+            print( '#'+str(channel)+' has no sound' )
+            set_display( '#'+str(channel)+' has no sound' )
 
 
 def handle_instrument(channel, pressed):
