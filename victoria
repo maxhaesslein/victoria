@@ -39,7 +39,7 @@ running = True
 
 print("Press CTRL+C to exit.")
 
-NOTE_OFFSET = 3
+note_offset = 0
 samples_piano = []
 files_piano = []
 octave_piano = 0
@@ -85,7 +85,7 @@ if options['use_display']:
     font = ImageFont.load_default()
 
     draw.rectangle((0, 0, width, height), outline=0, fill=0)
-    
+
     text = "V I C T O R I A"
     (font_width, font_height) = font.getsize(text)
     draw.text(
@@ -197,11 +197,15 @@ def get_filename(path):
 def handle_note(channel, pressed):
     channel = channel + (12 * octave_piano)
     if len(samples_piano) > 13:
-        channel += NOTE_OFFSET
-    if channel < len(samples_piano) and pressed:
-        print('Playing Sound: {}'.format(files_piano[channel]))
-        set_display( "Piano #{}".format(channel), get_filename(files_piano[channel]) )
-        samples_piano[channel].play(loops=0)
+        channel += note_offset
+    if pressed:
+        if channel < len(samples_piano):
+            print('Playing Sound: {}'.format(files_piano[channel]))
+            set_display( "Piano #{}".format(channel), get_filename(files_piano[channel]) )
+            samples_piano[channel].play(loops=0)
+        else:
+            print('No sound at '.str(channel))
+            set_display( "no sound at ".str(channel))
 
 
 def handle_instrument(channel, pressed):
@@ -237,7 +241,7 @@ def handle_octave_up(channel, pressed):
             set_volume( +1 )
     else:
         global octave_piano
-        if pressed and octave_piano < octaves_piano:
+        if pressed and octave_piano <= (octaves_piano-1):
             octave_piano += 1
             print('piano set: {}'.format(octave_piano))
             set_display( "piano set: {}".format(octave_piano+1) )
@@ -354,7 +358,7 @@ for filetype in FILETYPES:
 files_piano.sort()
 octaves_piano = len(files_piano) / 12
 samples_piano = [pygame.mixer.Sound(sample) for sample in files_piano]
-octave_piano = int(octaves_piano / 2)
+octave_piano = 0
 
 files_drums = []
 for filetype in FILETYPES:
