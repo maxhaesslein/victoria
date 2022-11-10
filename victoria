@@ -42,14 +42,15 @@ running = True
 
 print("Press CTRL+C to exit.")
 
-note_offset = 0
-samples_piano = []
-files_piano = []
 octave_piano = 0
 octaves_piano = 0
 instrument_button_down = False
 shutdown_button_counter = 0
 
+samples_piano = []
+samples_drums = []
+
+channels = []
 
 options = {
         'samplerate': 44100,
@@ -63,8 +64,8 @@ options = {
 
 display_content = [False, False]
 
-
-
+pianohat.auto_leds(False)
+drumhat.auto_leds = False
 
 
 def set_display( line1 = False, line2 = False ):
@@ -92,16 +93,12 @@ def set_volume( direction ):
     for i in range(0, max_led):
         pianohat.set_led(i, True)
 
-    set_all_volume()
-
-
-def set_all_volume():
     print("set volume to "+str(global_volume))
     set_display("volume: "+str(round(global_volume*100))+"%")
-    for sound in samples_piano:
-        sound.set_volume( global_volume )
-    for sound in samples_drums:
-        sound.set_volume( global_volume )
+
+    # TODO: set volume on all playing channels
+    #for channel in channels:
+    #    channel.set_volume( global_volume )
 
 
 def get_filename(path):
@@ -111,16 +108,15 @@ def get_filename(path):
 
 def handle_note(channel, pressed):
     channel = channel + (12 * octave_piano)
-    if len(samples_piano) > 13:
-        channel += note_offset
     if pressed:
         if channel < len(samples_piano):
-            print('Playing Sound: {}'.format(files_piano[channel]))
-            set_display( "Piano #{}".format(channel), get_filename(files_piano[channel]) )
-            samples_piano[channel].play(loops=0)
+            filename = samples_piano[channel]['filename']
+            print( "Piano #{}".format(channel) )
+            set_display( "Piano #{}".format(channel), get_filename(filename) )
+            play_sound( filename )
         else:
-            print( '#'+str(channel)+' has no sound' )
-            set_display( '#'+str(channel)+' has no sound' )
+            print( 'Piano #'+str(channel)+' has no sound' )
+            set_display( 'Piano #'+str(channel)+' has no sound' )
 
 
 def handle_instrument(channel, pressed):
@@ -179,6 +175,7 @@ def handle_drums_hit(event):
     # event.channel is a zero based channel index for each pad
     # event.pad is the pad number from 1 to 8
 
+    # maybe handle shutdown:
     if event.pad == 8 and instrument_button_down:
         global shutdown_button_counter
 
@@ -199,10 +196,11 @@ def handle_drums_hit(event):
         return
 
     try:
-        samples_drums[event.channel].play(loops=0)
-        print("You hit pad {}, playing: {}".format(event.pad,files_drums[event.channel]))
-        set_display( "Pad {}".format(event.pad), get_filename(files_drums[event.channel]) )
-        #drumhat.led_on(event.pad) # TODO: uncomment this for new LED behavior
+        filename = samples_drums[event.channel]['filename']
+        print( "Pad {}".format(event.pad) )
+        set_display( "Pad {}".format(event.pad), get_filename(filename) )
+        play_sound( filename )
+        drumhat.led_on(event.pad)
     except IndexError:
         print("Pad {} has no sound".format(event.pad))
         set_display( "Pad {} has no sound".format(event.pad) )
@@ -211,6 +209,20 @@ def handle_drums_hit(event):
 
 def handle_drums_release():
     pass
+
+
+def play_sound( filename ):
+    # TODO: maybe block this sound, if it is already playing?
+    print( '  Playing Sound: {}'.format(filename))
+    print( '    generate sound' )
+    sound = pygame.mixer.Sound( file=filename )
+    print( '    get channel' )
+    channel = pygame.mixer.find_channel()
+    print( '    play sound' )
+    channel.play( sound, loops=0 )
+    print( '    set volume' )
+    channel.set_volume( global_volume )
+    #channel.set_endevent() # TODO: use this to switch led of?
 
 
 def shutdown_action( skip_shutdown ):
@@ -241,12 +253,10 @@ def shutdown_action( skip_shutdown ):
     time.sleep(1)
     pygame.mixer.quit()
 
-    print("pianohat: set leds to off")
     pianohat.auto_leds(False)
     for i in range(0, 16):
         pianohat.set_led(i, False)
 
-    print( "drumhat: set leds to off")
     drumhat.all_off()
 
 
@@ -276,9 +286,9 @@ def sigint_handler(signal_received, frame):
 
 def disk_exists(path):
     try:
-            return stat.S_ISBLK(os.stat(path).st_mode)
+        return stat.S_ISBLK(os.stat(path).st_mode)
     except:
-            return False
+        return False
 
 
 
@@ -359,7 +369,7 @@ if options['use_display']:
 
     disp.image(image)
     disp.show()
-    time.sleep(0.2)
+    time.sleep(0.1)
 
 
 pygame.mixer.pre_init(options['samplerate'], -16, 2, 512)
@@ -373,22 +383,32 @@ for filetype in FILETYPES:
     files_piano.extend(glob.glob(os.path.join(BANK_PIANO, filetype)))
 files_piano.sort()
 octaves_piano = len(files_piano) / 12
-samples_piano = [pygame.mixer.Sound(sample) for sample in files_piano]
-octave_piano = 0
 
 files_drums = []
 for filetype in FILETYPES:
     files_drums.extend(glob.glob(os.path.join(BANK_DRUMS, filetype)))
 files_drums.sort()
-samples_drums = [pygame.mixer.Sound(f) for f in files_drums]
 
 
-set_all_volume()
+for filename in files_drums:
+    sample = {
+        'channel': False,
+        'filename': filename
+    }
+    samples_drums.append(sample)
 
-set_display( "Piano: "+str(len(files_piano))+" samples", "DrumHat: "+str(len(files_drums))+" samples")
+for filename in files_piano:
+    sample = {
+        'channel': False,
+        'filename': filename
+    }
+    samples_piano.append(sample)
 
+print( 'Piano: {} samples'.format(len(samples_piano)) )
+print( 'Drums: {} samples'.format(len(samples_drums)) )
 
-pianohat.auto_leds(False)
+set_display( "Piano: "+str(len(samples_piano))+" samples", "DrumHat: "+str(len(samples_drums))+" samples")
+
 
 for i in range(0, 16):
     pianohat.set_led(i, False)
@@ -400,10 +420,6 @@ for i in range(0, 13):
 time.sleep(0.2)
 for i in range(0, 16):
     pianohat.set_led(i, False)
-
-pianohat.auto_leds(True) # TODO: do we want auto_leds?
-
-# drumhat.auto_leds = False # TODO: uncomment this for new LED behavior
 
 drumhat.on_hit(drumhat.PADS, handle_drums_hit)
 drumhat.on_release(drumhat.PADS, handle_drums_release)
