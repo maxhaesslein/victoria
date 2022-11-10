@@ -24,6 +24,9 @@ import pygame
 import pianohat
 import drumhat
 
+
+
+
 BANK_PIANO = os.path.join(os.path.dirname(__file__), "sounds/piano")
 BANK_DRUMS = os.path.join(os.path.dirname(__file__), "sounds/drums2")
 
@@ -61,94 +64,7 @@ options = {
 display_content = [False, False]
 
 
-if options['use_display']:
-    # init the display
 
-    print( 'using display' )
-
-    import subprocess
-    from board import SCL, SDA
-    import busio
-    from PIL import Image, ImageDraw, ImageFont
-    import adafruit_ssd1306
-
-    i2c = busio.I2C(SCL, SDA)
-    disp = adafruit_ssd1306.SSD1306_I2C(128, 32, i2c)
-    disp.fill(0)
-    disp.show()
-    width = disp.width
-    height = disp.height
-    image = Image.new("1", (width, height))
-    draw = ImageDraw.Draw(image)
-    draw.rectangle((0, 0, width, height), outline=0, fill=0)
-    padding = -2
-    font = ImageFont.load_default()
-
-    draw.rectangle((0, 0, width, height), outline=0, fill=0)
-
-    text = "V I C T O R I A"
-    (font_width, font_height) = font.getsize(text)
-    draw.text(
-        (disp.width // 2 - font_width // 2, 5),
-        text,
-        font=font,
-        fill=255,
-    )
-
-    text = "v."+str(version)
-    (font_width, font_height) = font.getsize(text)
-    draw.text(
-        (disp.width // 2 - font_width // 2, disp.height - font_height),
-        text,
-        font=font,
-        fill=255,
-    )
-
-    disp.image(image)
-    disp.show()
-    time.sleep(0.2)
-
-
-def disk_exists(path):
-    try:
-            return stat.S_ISBLK(os.stat(path).st_mode)
-    except:
-            return False
-
-
-# check if usb thumb drive exists
-print( 'check if '+str(MOUNT_VOLUME)+' exists')
-if( disk_exists(MOUNT_VOLUME) ):
-    print('  yes')
-
-    # try to mount
-    os.system( 'sudo mount -o ro '+str(MOUNT_VOLUME)+' '+str(MOUNT_PATH) )
-    use_drive = True
-    BANK_PIANO = str(MOUNT_PATH)+options['folder_piano']
-    BANK_DRUMS = str(MOUNT_PATH)+options['folder_drums']
-
-else:
-    print('  no')
-
-if use_drive and os.path.isfile(str(MOUNT_PATH)+'/config.txt'):
-    import configparser
-    configParser = configparser.RawConfigParser()
-    configParser.read( str(MOUNT_PATH)+'/config.txt' )
-    for option in options:
-        if configParser.has_option('Victoria', option):
-            options[option] = configParser.get('Victoria', option)
-            if options[option] == 'False':
-                options[option] = False
-            if options[option] == 'True':
-                options[option] = True
-            if option == 'samplerate' or option == 'channels':
-                options[option] = int(options[option])
-
-print( 'options:', options )
-
-pygame.mixer.pre_init(options['samplerate'], -16, 2, 512)
-pygame.mixer.init()
-pygame.mixer.set_num_channels(options['channels'])
 
 
 def set_display( line1 = False, line2 = False ):
@@ -177,6 +93,7 @@ def set_volume( direction ):
         pianohat.set_led(i, True)
 
     set_all_volume()
+
 
 def set_all_volume():
     print("set volume to "+str(global_volume))
@@ -258,8 +175,6 @@ def handle_octave_down(channel, pressed):
             set_display( "piano set: {}".format(octave_piano+1) )
 
 
-
-# drums
 def handle_drums_hit(event):
     # event.channel is a zero based channel index for each pad
     # event.pad is the pad number from 1 to 8
@@ -293,8 +208,10 @@ def handle_drums_hit(event):
         set_display( "Pad {} has no sound".format(event.pad) )
         drumhat.led_off(event.pad)
 
+
 def handle_drums_release():
     pass
+
 
 def shutdown_action( skip_shutdown ):
     global running
@@ -352,6 +269,105 @@ def shutdown_action( skip_shutdown ):
     print("end program. bye.")
 
 
+def sigint_handler(signal_received, frame):
+    print('SIGINT or CTRL-C detected. Exiting gracefully')
+    shutdown_action( True )
+    exit(0)
+
+def disk_exists(path):
+    try:
+            return stat.S_ISBLK(os.stat(path).st_mode)
+    except:
+            return False
+
+
+
+
+
+if options['use_display']:
+    # init the display
+
+    print( 'using display' )
+
+    import subprocess
+    from board import SCL, SDA
+    import busio
+    from PIL import Image, ImageDraw, ImageFont
+    import adafruit_ssd1306
+
+    i2c = busio.I2C(SCL, SDA)
+    disp = adafruit_ssd1306.SSD1306_I2C(128, 32, i2c)
+    disp.fill(0)
+    disp.show()
+    width = disp.width
+    height = disp.height
+    image = Image.new("1", (width, height))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, width, height), outline=0, fill=0)
+    padding = -2
+    font = ImageFont.load_default()
+
+    draw.rectangle((0, 0, width, height), outline=0, fill=0)
+
+    text = "V I C T O R I A"
+    (font_width, font_height) = font.getsize(text)
+    draw.text(
+        (disp.width // 2 - font_width // 2, 5),
+        text,
+        font=font,
+        fill=255,
+    )
+
+    text = "v."+str(version)
+    (font_width, font_height) = font.getsize(text)
+    draw.text(
+        (disp.width // 2 - font_width // 2, disp.height - font_height),
+        text,
+        font=font,
+        fill=255,
+    )
+
+    disp.image(image)
+    disp.show()
+    time.sleep(0.2)
+
+
+# check if usb thumb drive exists
+print( 'check if '+str(MOUNT_VOLUME)+' exists')
+if( disk_exists(MOUNT_VOLUME) ):
+    print('  yes')
+
+    # try to mount
+    os.system( 'sudo mount -o ro '+str(MOUNT_VOLUME)+' '+str(MOUNT_PATH) )
+    use_drive = True
+    BANK_PIANO = str(MOUNT_PATH)+options['folder_piano']
+    BANK_DRUMS = str(MOUNT_PATH)+options['folder_drums']
+
+else:
+    print('  no')
+
+if use_drive and os.path.isfile(str(MOUNT_PATH)+'/config.txt'):
+    import configparser
+    configParser = configparser.RawConfigParser()
+    configParser.read( str(MOUNT_PATH)+'/config.txt' )
+    for option in options:
+        if configParser.has_option('Victoria', option):
+            options[option] = configParser.get('Victoria', option)
+            if options[option] == 'False':
+                options[option] = False
+            if options[option] == 'True':
+                options[option] = True
+            if option == 'samplerate' or option == 'channels':
+                options[option] = int(options[option])
+
+print( 'options:', options )
+
+pygame.mixer.pre_init(options['samplerate'], -16, 2, 512)
+pygame.mixer.init()
+pygame.mixer.set_num_channels(options['channels'])
+
+
+
 files_piano = []
 for filetype in FILETYPES:
     files_piano.extend(glob.glob(os.path.join(BANK_PIANO, filetype)))
@@ -398,16 +414,13 @@ pianohat.on_octave_down(handle_octave_down)
 pianohat.on_instrument(handle_instrument)
 
 
-def sigint_handler(signal_received, frame):
-    print('SIGINT or CTRL-C detected. Exiting gracefully')
-    shutdown_action( True )
-    exit(0)
-
 signal.signal(signal.SIGINT, sigint_handler) # capture ctrl+c
 
 
-if options['use_display']:
-    while running:
+while running:
+
+    if options['use_display']:
+
         draw.rectangle((0, 0, width, height), outline=0, fill=0)
 
         cmd = 'cut -f 1 -d " " /proc/loadavg'
@@ -427,12 +440,13 @@ if options['use_display']:
         disp.show()
 
 
-        # TODO: loop over leds to see if we need to disable a led
-        # see if pygame.mixer.Channel(channel_index).get_busy() is False,
-        # then call: drumhat.led_off(drumhat.NUMMAP[channel])
+    # TODO: loop over leds to see if we need to disable a led
+    # see if pygame.mixer.Channel(channel_index).get_busy() is False,
+    # then call: drumhat.led_off(drumhat.NUMMAP[channel])
 
 
-        time.sleep(1/options['fps'])
+    time.sleep(1/options['fps'])
 
 
 signal.pause()
+
