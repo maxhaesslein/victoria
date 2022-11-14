@@ -444,13 +444,13 @@ while running:
         draw.rectangle((0, 0, width, height), outline=0, fill=0)
 
         cmd = 'cut -f 1 -d " " /proc/loadavg'
-        CPU = subprocess.check_output(cmd, shell=True).decode("utf-8")
-        cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%sMB %.2f%%\", $3,$2,$3*100/$2 }'"
-        MemUsage = subprocess.check_output(cmd, shell=True).decode("utf-8")
+        CPU = str(subprocess.check_output(cmd, shell=True).decode("utf-8").strip())
+        cmd = "free -m | awk 'NR==2{printf \"%.0f%%\", $3*100/$2 }'"
+        MemUsage = str(subprocess.check_output(cmd, shell=True).decode("utf-8").strip())
 
         top = -1
-        draw.text((0, top+0), "CPU: " + CPU, font=font, fill=255)
-        draw.text((0, top+8), MemUsage, font=font, fill=255)
+        draw.text((0, top+0), "CPU: " + CPU + ' / MEM: ' + MemUsage, font=font, fill=255)
+        draw.text((0, top+8), 'Channels: '+str(len(channels))+'/'+str(options['channels']), font=font, fill=255)
         if display_content[0]:
             draw.text((0, top+16), display_content[0], font=font, fill=255)
         if display_content[1]:
