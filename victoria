@@ -106,14 +106,15 @@ def get_filename(path):
     return filename
 
 
-def handle_note(channel, pressed):
-    channel = channel + (12 * octave_piano)
+def handle_note(channel_org, pressed):
+    channel = channel_org + (12 * octave_piano)
     if pressed:
         if channel < len(samples_piano):
             filename = samples_piano[channel]['filename']
             print( "Piano #{}".format(channel) )
             set_display( "Piano #{}".format(channel), get_filename(filename) )
-            play_sound( filename )
+            pianohat.set_led( channel_org, True )
+            play_sound( filename, 'pianohat', channel_org )
         else:
             print( 'Piano #'+str(channel)+' has no sound' )
             set_display( 'Piano #'+str(channel)+' has no sound' )
@@ -199,7 +200,7 @@ def handle_drums_hit(event):
         filename = samples_drums[event.channel]['filename']
         print( "Pad {}".format(event.pad) )
         set_display( "Pad {}".format(event.pad), get_filename(filename) )
-        play_sound( filename )
+        play_sound( filename, 'drumhat', event.pad )
         drumhat.led_on(event.pad)
     except IndexError:
         print("Pad {} has no sound".format(event.pad))
@@ -211,18 +212,21 @@ def handle_drums_release():
     pass
 
 
-def play_sound( filename ):
-    # TODO: maybe block this sound, if it is already playing?
+def play_sound( filename, hat, led ):
+    # TODO: maybe block this sound file, if it is already playing?
     print( '  Playing Sound: {}'.format(filename))
-    print( '    generate sound' )
     sound = pygame.mixer.Sound( file=filename )
-    print( '    get channel' )
-    channel = pygame.mixer.find_channel()
-    print( '    play sound' )
-    channel.play( sound, loops=0 )
-    print( '    set volume' )
-    channel.set_volume( global_volume )
-    #channel.set_endevent() # TODO: use this to switch led of?
+    channelObj = pygame.mixer.find_channel()
+    channelObj.play( sound, loops=0 )
+    channelObj.set_volume( global_volume )
+    channel = {
+        'filename': filename,
+        'hat': hat,
+        'led': led,
+        'channel': channelObj
+    }
+
+    channels.append( channel )
 
 
 def shutdown_action( skip_shutdown ):
@@ -454,6 +458,16 @@ while running:
 
         disp.image(image)
         disp.show()
+
+    for channel in list(channels): # NOTE: we use list(channels) to iterate over a copy of the list, so we can remove elements from the original list
+        sound = channel['channel'].get_sound()
+        # if sound is "None" then no sound is playing
+        if sound is None:
+            if channel['hat'] == 'pianohat':
+                pianohat.set_led( channel['led'], False )
+            elif channel['hat'] == 'drumhat':
+                drumhat.led_off( channel['led'] )
+            channels.remove(channel)
 
 
     # TODO: loop over leds to see if we need to disable a led
