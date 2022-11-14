@@ -213,7 +213,12 @@ def handle_drums_release():
 
 
 def play_sound( filename, hat, led ):
-    # TODO: maybe block this sound file, if it is already playing?
+
+    for channel in channels:
+        if channel['hat'] == hat and channel['led'] == led:
+            print( '  this  hat/channel already plays a sound')
+            return
+
     print( '  Playing Sound: {}'.format(filename))
     sound = pygame.mixer.Sound( file=filename )
     channelObj = pygame.mixer.find_channel()
@@ -468,11 +473,6 @@ while running:
             elif channel['hat'] == 'drumhat':
                 drumhat.led_off( channel['led'] )
             channels.remove(channel)
-
-
-    # TODO: loop over leds to see if we need to disable a led
-    # see if pygame.mixer.Channel(channel_index).get_busy() is False,
-    # then call: drumhat.led_off(drumhat.NUMMAP[channel])
 
 
     time.sleep(1/options['fps'])
