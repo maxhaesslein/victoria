@@ -36,7 +36,7 @@ FILETYPES = ['*.wav', '*.WAV', '*.ogg', '*.OGG']
 use_drive = False # gets set to true if the volume is mounted
 
 volume_step = 1.0/13.0
-global_volume = 10.0/13.0
+global_volume = 7.0/13.0
 
 running = True
 
@@ -96,9 +96,8 @@ def set_volume( direction ):
     print("set volume to "+str(global_volume))
     set_display("volume: "+str(round(global_volume*100))+"%")
 
-    # TODO: set volume on all playing channels
-    #for channel in channels:
-    #    channel.set_volume( global_volume )
+    for channel in channels:
+        channel['channel'].set_volume( global_volume )
 
 
 def get_filename(path):
@@ -129,7 +128,6 @@ def handle_instrument(channel, pressed):
     pianohat.set_led(15, False)
 
     if pressed:
-        pianohat.auto_leds(False)
         pianohat.set_led(channel, True)
 
         max_led = int(round(global_volume * 13))
@@ -139,7 +137,7 @@ def handle_instrument(channel, pressed):
             pianohat.set_led(i, True)
 
     else:
-        pianohat.auto_leds(True)
+        pianohat.set_led(channel, False)
         global shutdown_button_counter
         shutdown_button_counter = 0
         for i in range(0, 16):
@@ -183,7 +181,6 @@ def handle_drums_hit(event):
         shutdown_button_counter += 1
 
         if shutdown_button_counter > 0:
-            pianohat.auto_leds(False)
             for i in range(0, 16):
                 pianohat.set_led(i, True)
         if shutdown_button_counter > 1:
@@ -262,7 +259,6 @@ def shutdown_action( skip_shutdown ):
     time.sleep(1)
     pygame.mixer.quit()
 
-    pianohat.auto_leds(False)
     for i in range(0, 16):
         pianohat.set_led(i, False)
 
