@@ -304,7 +304,7 @@ if( disk_exists(MOUNT_VOLUME) ):
     print('  yes')
 
     # try to mount
-    os.system( 'sudo mount -o ro '+str(MOUNT_VOLUME)+' '+str(MOUNT_PATH) )
+    os.system( 'sudo mount '+str(MOUNT_VOLUME)+' '+str(MOUNT_PATH) )
     use_drive = True
     BANK_PIANO = str(MOUNT_PATH)+options['folder_piano']
     BANK_DRUMS = str(MOUNT_PATH)+options['folder_drums']
