@@ -29,6 +29,7 @@ import drumhat
 
 BANK_PIANO = os.path.join(os.path.dirname(__file__), "sounds/piano")
 BANK_DRUMS = os.path.join(os.path.dirname(__file__), "sounds/drums2")
+RECORDING_TARGET = os.path.join(os.path.dirname(__file__), "recordings/")
 
 MOUNT_PATH = '/mnt/victoria_usb'
 MOUNT_VOLUME = '/dev/sda1'
@@ -56,6 +57,7 @@ options = {
         'samplerate': 44100,
         'folder_piano': '/piano',
         'folder_drums': '/drums',
+        'folder_recording': '/recording',
         'channels': 32,
         'use_display': True,
         'fps': 30
@@ -308,6 +310,7 @@ if( disk_exists(MOUNT_VOLUME) ):
     use_drive = True
     BANK_PIANO = str(MOUNT_PATH)+options['folder_piano']
     BANK_DRUMS = str(MOUNT_PATH)+options['folder_drums']
+    RECORDING_TARGET = str(MOUNT_PATH)+options['folder_recording']
 
 else:
     print('  no')
