@@ -23,7 +23,7 @@ from sys import exit
 import pygame
 import pianohat
 import drumhat
-
+import buttonshim
 
 
 
@@ -70,6 +70,8 @@ display_content = [False, False]
 
 pianohat.auto_leds(False)
 drumhat.auto_leds = False
+
+buttonshim.set_pixel(0x00,0x00,0xff)
 
 
 def set_display( line1 = False, line2 = False ):
@@ -188,6 +190,9 @@ def handle_drums_hit(event):
             for i in range(0, 16):
                 pianohat.set_led(i, True)
         if shutdown_button_counter > 1:
+
+            buttonshim.set_pixel(0x00,0x00,0xff)
+
             drumhat.all_on()
             for i in range(0, 16):
                 pianohat.set_led(i, False)
@@ -239,6 +244,9 @@ def shutdown_action( skip_shutdown ):
     global running
     print( 'starting shut down ...')
 
+    buttonshim.set_pixel(0x00,0x00,0xff)
+
+
     running = False
     time.sleep(0.4)
 
@@ -268,7 +276,6 @@ def shutdown_action( skip_shutdown ):
 
     drumhat.all_off()
 
-
     if options['use_display']:
         print("clear display")
         # clear display:
@@ -281,17 +288,19 @@ def shutdown_action( skip_shutdown ):
         print( 'unmounting '+str(MOUNT_PATH) )
         os.system( 'sudo umount '+str(MOUNT_PATH) )
 
+    buttonshim.set_pixel(0x00,0x00,0xff)
+
     if not skip_shutdown:
         print("shut down system ...")
         os.system('sudo shutdown now')
 
     print("end program. bye.")
+    exit(0)
 
 
 def sigint_handler(signal_received, frame):
     print('SIGINT or CTRL-C detected. Exiting gracefully')
     shutdown_action( True )
-    exit(0)
 
 def disk_exists(path):
     try:
@@ -443,6 +452,8 @@ pianohat.on_instrument(handle_instrument)
 
 signal.signal(signal.SIGINT, sigint_handler) # capture ctrl+c
 
+
+buttonshim.set_pixel(0xff,0xff,0xff)
 
 while running:
 
