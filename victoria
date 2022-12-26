@@ -64,7 +64,7 @@ options = {
         'folder_recording': '/recording',
         'channels': 32,
         'use_display': True,
-        'fps': 3
+        'fps': 2
     }
 
 
@@ -114,17 +114,22 @@ def get_filename(path):
 
 
 def reset_playing_channel_leds():
+
+    for i in range(0, 13):
+        pianohat.set_led(i, False)
+
     for channel in channels:
         sound = channel['channel'].get_sound()
         if channel['hat'] != 'pianohat':
             continue
         if sound is not None:
-            # TODO: check octave and only activate correct led if octave is active; or, make led number higher if higher octave
-            pianohat.set_led( channel['led'], True )
+            led = channel['led'] - (octave_piano*13)
+            if led >= 0 and led < 13:
+                pianohat.set_led( led, True )
 
 
 def handle_note(channel_org, pressed):
-    channel = channel_org + (12 * octave_piano)
+    channel = channel_org + (13 * octave_piano)
     if pressed:
         if channel < len(samples_piano):
             pianohat.set_led( channel_org, True )
@@ -178,6 +183,8 @@ def set_octave( direction ):
             octave_piano -= 1
             print('piano set: {}'.format(octave_piano))
             set_display( "piano set: {}".format(octave_piano+1) )
+
+    reset_playing_channel_leds()
 
 
 def handle_octave_up(channel, pressed):
@@ -248,7 +255,8 @@ def handle_drums_release():
 def play_sound( filename, hat, led ):
 
     for channel in channels:
-        if channel['hat'] == hat and channel['led'] == led:
+        relative_led = channel['led'] - (octave_piano*13)
+        if channel['hat'] == hat and relative_led == led:
             print( '  this  hat/channel already plays a sound')
             return
 
@@ -258,11 +266,12 @@ def play_sound( filename, hat, led ):
     channelObj.play( sound, loops=0 )
     channelObj.set_volume( global_volume )
 
-    # TODO: maybe add octave to this channel object, or maybe set led relative to octave? so we can set the led state based on the current octave
+    led_octave = led + (octave_piano*13)
+
     channel = {
         'filename': filename,
         'hat': hat,
-        'led': led,
+        'led': led_octave,
         'channel': channelObj
     }
 
@@ -431,7 +440,7 @@ files_piano = []
 for filetype in FILETYPES:
     files_piano.extend(glob.glob(os.path.join(BANK_PIANO, filetype)))
 files_piano.sort()
-octaves_piano = len(files_piano) / 12
+octaves_piano = len(files_piano) / 13
 
 files_drums = []
 for filetype in FILETYPES:
@@ -565,7 +574,9 @@ while running:
         # if sound is "None" then no sound is playing
         if sound is None:
             if channel['hat'] == 'pianohat':
-                pianohat.set_led( channel['led'], False )
+                led = channel['led'] - (octave_piano*13)
+                if led >= 0 and led < 13:
+                    pianohat.set_led( led, False )
             elif channel['hat'] == 'drumhat':
                 drumhat.led_off( channel['led'] )
             channels.remove(channel)
