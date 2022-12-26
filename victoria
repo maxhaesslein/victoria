@@ -42,6 +42,8 @@ global_volume = 7.0/13.0
 buffer_size = 1024 # mixer buffer size. default: 512. smaller = less latency, but may have buffer underrun and scratchy sound. must be power of 2
 
 running = True
+recording = False
+recording_count = 0
 
 print("Press CTRL+C to exit.")
 
@@ -62,7 +64,7 @@ options = {
         'folder_recording': '/recording',
         'channels': 32,
         'use_display': True,
-        'fps': 30
+        'fps': 3
     }
 
 
@@ -450,12 +452,44 @@ pianohat.on_octave_down(handle_octave_down)
 pianohat.on_instrument(handle_instrument)
 
 
+@buttonshim.on_press(buttonshim.BUTTON_A)
+def button_a(button, pressed):
+    buttonshim.set_pixel(0x00,0xff,0x00)
+    set_volume( +1 )
+
+@buttonshim.on_press(buttonshim.BUTTON_B)
+def button_b(button, pressed):
+    buttonshim.set_pixel(0x00,0xff,0x00)
+    set_volume( -1 )
+
+@buttonshim.on_press(buttonshim.BUTTON_C)
+def button_c(button, pressed):
+    pass
+
+@buttonshim.on_press(buttonshim.BUTTON_D)
+def button_d(button, pressed):
+    global recording
+    if recording:
+        buttonshim.set_pixel(0x00,0xff,0x00)
+        recording = False
+    pass
+
+@buttonshim.on_press(buttonshim.BUTTON_E)
+def button_e(button, pressed):
+    global recording
+    buttonshim.set_pixel(0xff,0x00,0x00)
+    recording = True
+    recording_count = 0
+
+
 signal.signal(signal.SIGINT, sigint_handler) # capture ctrl+c
 
 
 buttonshim.set_pixel(0xff,0xff,0xff)
 
 while running:
+
+    start_time = time.time()
 
     if options['use_display']:
 
@@ -487,8 +521,28 @@ while running:
                 drumhat.led_off( channel['led'] )
             channels.remove(channel)
 
+    if recording:
 
-    time.sleep(1/options['fps'])
+        if recording_count >= 1:
+            buttonshim.set_pixel(0x00, 0x00, 0x00)
+        else:
+            buttonshim.set_pixel(0xff, 0x00, 0x00)
+
+        if recording_count >= 2:
+            recording_count = 0
+        else:
+            recording_count = recording_count + 1
+
+    else:
+        buttonshim.set_pixel(0xff,0xff,0xff)
+
+
+    end_time = time.time()
+    dif_time = end_time - start_time
+    target_time = 1/options['fps']
+    if dif_time < target_time:
+        sleep_time = target_time - dif_time
+        time.sleep(sleep_time)
 
 
 signal.pause()
