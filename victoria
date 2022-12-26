@@ -39,6 +39,8 @@ use_drive = False # gets set to true if the volume is mounted
 volume_step = 1.0/13.0
 global_volume = 7.0/13.0
 
+buffer_size = 1024 # mixer buffer size. default: 512. smaller = less latency, but may have buffer underrun and scratchy sound. must be power of 2
+
 running = True
 
 print("Press CTRL+C to exit.")
@@ -380,7 +382,8 @@ if options['use_display']:
     time.sleep(0.1)
 
 
-pygame.mixer.pre_init(options['samplerate'], -16, 2, 512)
+
+pygame.mixer.pre_init(options['samplerate'], -16, 2, buffer_size)
 pygame.mixer.init()
 pygame.mixer.set_num_channels(options['channels'])
 
