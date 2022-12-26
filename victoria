@@ -151,6 +151,13 @@ def handle_instrument(channel, pressed):
         for i in range(0, 16):
             pianohat.set_led(i, False)
 
+        # reset currently playing leds
+        for channel in channels:
+            sound = channel['channel'].get_sound()
+            if sound is not None:
+                if channel['hat'] == 'pianohat':
+                    pianohat.set_led( channel['led'], True )
+
 
 def handle_octave_up(channel, pressed):
     if instrument_button_down:
@@ -457,10 +464,18 @@ def button_a(button, pressed):
     buttonshim.set_pixel(0x00,0xff,0x00)
     set_volume( +1 )
 
+@buttonshim.on_release(buttonshim.BUTTON_A)
+def button_a_release(button, pressed):
+    handle_instrument(16, False)
+
 @buttonshim.on_press(buttonshim.BUTTON_B)
 def button_b(button, pressed):
     buttonshim.set_pixel(0x00,0xff,0x00)
     set_volume( -1 )
+
+@buttonshim.on_release(buttonshim.BUTTON_B)
+def button_b_release(button, pressed):
+    handle_instrument(16, False)
 
 @buttonshim.on_press(buttonshim.BUTTON_C)
 def button_c(button, pressed):
@@ -543,6 +558,8 @@ while running:
     if dif_time < target_time:
         sleep_time = target_time - dif_time
         time.sleep(sleep_time)
+    else:
+        print( 'fps too low' )
 
 
 signal.pause()
