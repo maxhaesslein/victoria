@@ -113,10 +113,10 @@ def handle_note(channel_org, pressed):
     channel = channel_org + (12 * octave_piano)
     if pressed:
         if channel < len(samples_piano):
+            pianohat.set_led( channel_org, True )
             filename = samples_piano[channel]['filename']
             print( "Piano #{}".format(channel) )
             set_display( "Piano #{}".format(channel), get_filename(filename) )
-            pianohat.set_led( channel_org, True )
             play_sound( filename, 'pianohat', channel_org )
         else:
             print( 'Piano #'+str(channel)+' has no sound' )
@@ -199,10 +199,10 @@ def handle_drums_hit(event):
 
     try:
         filename = samples_drums[event.channel]['filename']
+        drumhat.led_on(event.pad)
         print( "Pad {}".format(event.pad) )
         set_display( "Pad {}".format(event.pad), get_filename(filename) )
         play_sound( filename, 'drumhat', event.pad )
-        drumhat.led_on(event.pad)
     except IndexError:
         print("Pad {} has no sound".format(event.pad))
         set_display( "Pad {} has no sound".format(event.pad) )
