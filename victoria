@@ -39,7 +39,7 @@ use_drive = False # gets set to true if the volume is mounted
 volume_step = 1.0/13.0
 global_volume = 7.0/13.0
 
-buffer_size = 1024 # mixer buffer size. default: 512. smaller = less latency, but may have buffer underrun and scratchy sound. must be power of 2
+buffer_size = 2048 # mixer buffer size. default: 512. smaller = less latency, but may have buffer underrun and scratchy sound. must be power of 2
 
 running = True
 recording = False
@@ -255,7 +255,11 @@ def handle_drums_release():
 def play_sound( filename, hat, led ):
 
     for channel in channels:
-        relative_led = channel['led'] - (octave_piano*13)
+        if channel['hat'] == 'piano':
+            relative_led = channel['led'] - (octave_piano*13)
+        else:
+            relative_led = channel['led']
+
         if channel['hat'] == hat and relative_led == led:
             print( '  this  hat/channel already plays a sound')
             return
@@ -266,7 +270,10 @@ def play_sound( filename, hat, led ):
     channelObj.play( sound, loops=0 )
     channelObj.set_volume( global_volume )
 
-    led_octave = led + (octave_piano*13)
+    if hat == 'piano':
+        led_octave = led + (octave_piano*13)
+    else:
+        led_octave = led
 
     channel = {
         'filename': filename,
@@ -561,9 +568,12 @@ MemUsage = ''
 
 frame_counter = 0
 
+display_top_offset = -1
+
 while running:
 
     start_time = time.time()
+
 
     # set buttonshim led, if recording:
     if change_led:
@@ -575,35 +585,35 @@ while running:
 
     if options['use_display']:
 
-        # we only update the cpu/mem and screen every so often, not every frame, because this takes some compute power
-
-        if frame_counter%5 == 0:
-
-            print('update cpu/mem')
+        # we only update the cpu and mem and screen every so often, not every frame, because this takes some compute power
+        if frame_counter%12 == 0:
 
             cmd = 'cut -f 1 -d " " /proc/loadavg'
             CPU = str(subprocess.check_output(cmd, shell=True).decode("utf-8").strip())
+
+            draw.rectangle((0, 0, width, 8), outline=0, fill=0)
+            draw.text((0, display_top_offset+0), "CPU: " + CPU + ' / MEM: ' + MemUsage, font=font, fill=255)
+
+        elif frame_counter%12 == 1:
+
             cmd = "free -m | awk 'NR==2{printf \"%.0f%%\", $3*100/$2 }'"
             MemUsage = str(subprocess.check_output(cmd, shell=True).decode("utf-8").strip())
 
+            draw.rectangle((0, 0, width, 8), outline=0, fill=0)
+            draw.text((0, display_top_offset+0), "CPU: " + CPU + ' / MEM: ' + MemUsage, font=font, fill=255)
 
-        if frame_counter%5 == 1:
+        elif frame_counter%3 == 2:
 
-            print('update screen')
+            draw.rectangle((0, 8, width, height), outline=0, fill=0)
 
-            draw.rectangle((0, 0, width, height), outline=0, fill=0)
-
-            top = -1
-            draw.text((0, top+0), "CPU: " + CPU + ' / MEM: ' + MemUsage, font=font, fill=255)
-            draw.text((0, top+8), 'Channels: '+str(len(channels))+'/'+str(options['channels']), font=font, fill=255)
+            draw.text((0, display_top_offset+8), 'Channels: '+str(len(channels))+'/'+str(options['channels']), font=font, fill=255)
             if display_content[0]:
-                draw.text((0, top+16), display_content[0], font=font, fill=255)
+                draw.text((0, display_top_offset+16), display_content[0], font=font, fill=255)
             if display_content[1]:
-                draw.text((0, top+24), display_content[1], font=font, fill=255)
+                draw.text((0, display_top_offset+24), display_content[1], font=font, fill=255)
 
             disp.image(image)
             disp.show()
-
 
     for channel in list(channels): # NOTE: we use list(channels) to iterate over a copy of the list, so we can remove elements from the original list
         sound = channel['channel'].get_sound()
@@ -619,11 +629,13 @@ while running:
 
 
     frame_counter = frame_counter + 1
+    if frame_counter > 1024: # TODO: check what a good rollover point is
+        frame_counter = 0
+
 
     dif_time = time.time() - start_time
     if dif_time < target_time:
         sleep_time = target_time - dif_time
-        print( 'seep', sleep_time)
         time.sleep(sleep_time)
     else:
         print( 'fps too low' )
