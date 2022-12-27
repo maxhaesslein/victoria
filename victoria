@@ -43,6 +43,7 @@ buffer_size = 2048 # mixer buffer size. default: 512. smaller = less latency, bu
 
 running = True
 recording = False
+update_channel = True
 
 print("Press CTRL+C to exit.")
 
@@ -254,6 +255,8 @@ def handle_drums_release():
 
 def play_sound( filename, hat, led ):
 
+    global update_channel
+
     for channel in channels:
         if channel['hat'] == 'piano':
             relative_led = channel['led'] - (octave_piano*13)
@@ -283,6 +286,7 @@ def play_sound( filename, hat, led ):
     }
 
     channels.append( channel )
+    update_channel = True
 
 
 def shutdown_action( skip_shutdown ):
@@ -566,9 +570,13 @@ change_led = True
 CPU = ''
 MemUsage = ''
 
-frame_counter = 0
 
-display_top_offset = -1
+last_line_1 = 'force refresh'
+last_line_1_count = 12
+last_line_2 = 'force refresh'
+last_line_2_count = 12
+cpumem_frame_counter = 10
+screen_refresh = True
 
 while running:
 
@@ -583,38 +591,7 @@ while running:
             buttonshim.set_pixel(0xff,0xff,0xff)
 
 
-    if options['use_display']:
-
-        # we only update the cpu and mem and screen every so often, not every frame, because this takes some compute power
-        if frame_counter%12 == 0:
-
-            cmd = 'cut -f 1 -d " " /proc/loadavg'
-            CPU = str(subprocess.check_output(cmd, shell=True).decode("utf-8").strip())
-
-            draw.rectangle((0, 0, width, 8), outline=0, fill=0)
-            draw.text((0, display_top_offset+0), "CPU: " + CPU + ' / MEM: ' + MemUsage, font=font, fill=255)
-
-        elif frame_counter%12 == 1:
-
-            cmd = "free -m | awk 'NR==2{printf \"%.0f%%\", $3*100/$2 }'"
-            MemUsage = str(subprocess.check_output(cmd, shell=True).decode("utf-8").strip())
-
-            draw.rectangle((0, 0, width, 8), outline=0, fill=0)
-            draw.text((0, display_top_offset+0), "CPU: " + CPU + ' / MEM: ' + MemUsage, font=font, fill=255)
-
-        elif frame_counter%3 == 2:
-
-            draw.rectangle((0, 8, width, height), outline=0, fill=0)
-
-            draw.text((0, display_top_offset+8), 'Channels: '+str(len(channels))+'/'+str(options['channels']), font=font, fill=255)
-            if display_content[0]:
-                draw.text((0, display_top_offset+16), display_content[0], font=font, fill=255)
-            if display_content[1]:
-                draw.text((0, display_top_offset+24), display_content[1], font=font, fill=255)
-
-            disp.image(image)
-            disp.show()
-
+    channel_removed = False
     for channel in list(channels): # NOTE: we use list(channels) to iterate over a copy of the list, so we can remove elements from the original list
         sound = channel['channel'].get_sound()
         # if sound is "None" then no sound is playing
@@ -626,11 +603,80 @@ while running:
             elif channel['hat'] == 'drumhat':
                 drumhat.led_off( channel['led'] )
             channels.remove(channel)
+            channel_removed = True
 
+    if channel_removed:
+        update_channel = True
 
-    frame_counter = frame_counter + 1
-    if frame_counter > 1024: # TODO: check what a good rollover point is
-        frame_counter = 0
+    if options['use_display']:
+
+        if display_content[0]:
+            if last_line_1_count > 0:
+                last_line_1_count = last_line_1_count - 1
+            else:
+                display_content[0] = ''
+
+        if display_content[1]:
+            if last_line_2_count > 0:
+                last_line_2_count = last_line_2_count - 1
+            else:
+                display_content[1] = ''
+
+        if update_channel:
+            draw.rectangle((0, 8, width, 16), outline=0, fill=0)
+            draw.text((0, 8-1), 'Channels: '+str(len(channels))+'/'+str(options['channels']), font=font, fill=255)
+            update_channel = False
+            screen_refresh = True
+
+        if display_content[0] != last_line_1:
+            draw.rectangle((0, 16, width, 24), outline=0, fill=0)
+            if display_content[0]:
+                draw.text((0, 16-1), display_content[0], font=font, fill=255)
+            last_line_1 = display_content[0]
+            last_line_1_count = 12
+            screen_refresh = True
+
+        if display_content[1] != last_line_2:
+            draw.rectangle((0, 24, width, 32), outline=0, fill=0)
+            if display_content[1]:
+                draw.text((0, 24-1), display_content[1], font=font, fill=255)
+            last_line_2 = display_content[1]
+            last_line_2_count = 12
+            screen_refresh = True
+
+        if screen_refresh:
+
+            disp.image(image)
+            disp.show()
+            screen_refresh = False
+
+        else:
+
+            # cpu and mem update takes some time, so we only refresh it, if we don't update the screen this frame
+
+            if cpumem_frame_counter%12 == 0:
+
+                cmd = 'cut -f 1 -d " " /proc/loadavg'
+                CPU = str(subprocess.check_output(cmd, shell=True).decode("utf-8").strip())
+
+                draw.rectangle((0, 0, width, 8), outline=0, fill=0)
+                draw.text((0, 0-1), "CPU: " + CPU + ' / MEM: ' + MemUsage, font=font, fill=255)
+
+                # screen_refresh = True # next frame has a mem refresh, so we wait for that to happen before refreshing the creen
+
+            elif cpumem_frame_counter%12 == 1:
+
+                cmd = "free -m | awk 'NR==2{printf \"%.0f%%\", $3*100/$2 }'"
+                MemUsage = str(subprocess.check_output(cmd, shell=True).decode("utf-8").strip())
+
+                draw.rectangle((0, 0, width, 8), outline=0, fill=0)
+                draw.text((0, -1), "CPU: " + CPU + ' / MEM: ' + MemUsage, font=font, fill=255)
+
+                screen_refresh = True
+
+            cpumem_frame_counter = cpumem_frame_counter + 1
+            if cpumem_frame_counter > 24: # TODO: check what a good rollover point is
+                cpumem_frame_counter = 0
 
 
     dif_time = time.time() - start_time
