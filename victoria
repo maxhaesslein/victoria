@@ -29,7 +29,6 @@ import buttonshim
 
 BANK_PIANO = os.path.join(os.path.dirname(__file__), "sounds/piano")
 BANK_DRUMS = os.path.join(os.path.dirname(__file__), "sounds/drums2")
-RECORDING_TARGET = os.path.join(os.path.dirname(__file__), "recordings/")
 
 MOUNT_PATH = '/mnt/victoria_usb'
 MOUNT_VOLUME = '/dev/sda1'
@@ -39,10 +38,11 @@ use_drive = False # gets set to true if the volume is mounted
 volume_step = 1.0/13.0
 global_volume = 7.0/13.0
 
+modus = "default"
+
 buffer_size = 2048 # mixer buffer size. default: 512. smaller = less latency, but may have buffer underrun and scratchy sound. must be power of 2
 
 running = True
-recording = False
 update_channel = True
 
 print("Press CTRL+C to exit.")
@@ -61,7 +61,6 @@ options = {
         'samplerate': 44100,
         'folder_piano': '/piano',
         'folder_drums': '/drums',
-        'folder_recording': '/recording',
         'channels': 32,
         'use_display': True,
         'fps': 4
@@ -102,7 +101,7 @@ def set_volume( direction ):
         pianohat.set_led(i, True)
 
     print("set volume to "+str(global_volume))
-    set_display("volume: "+str(round(global_volume*100))+"%")
+    set_display("","volume: "+str(round(global_volume*100))+"%")
 
     for channel in channels:
         channel['channel'].set_volume( global_volume )
@@ -360,6 +359,14 @@ def disk_exists(path):
         return False
 
 
+def set_modus( new_modus ):
+    global modus
+
+    modus = new_modus
+
+    print("set modus to "+str(new_modus))
+    set_display( "", "MODUS: "+str(new_modus) )
+
 
 
 # check if usb thumb drive exists
@@ -372,7 +379,6 @@ if( disk_exists(MOUNT_VOLUME) ):
     use_drive = True
     BANK_PIANO = str(MOUNT_PATH)+options['folder_piano']
     BANK_DRUMS = str(MOUNT_PATH)+options['folder_drums']
-    RECORDING_TARGET = str(MOUNT_PATH)+options['folder_recording']
 
 else:
     print('  no')
@@ -503,7 +509,7 @@ pianohat.on_instrument(handle_instrument)
 
 @buttonshim.on_press(buttonshim.BUTTON_A)
 def button_a(button, pressed):
-    buttonshim.set_pixel(0x00,0xff,0x00)
+    buttonshim.set_pixel(0x00,0x00,0xff)
     reset_led = True
     set_volume( +1 )
 
@@ -514,7 +520,7 @@ def button_a_release(button, pressed):
 
 @buttonshim.on_press(buttonshim.BUTTON_B)
 def button_b(button, pressed):
-    buttonshim.set_pixel(0x00,0xff,0x00)
+    buttonshim.set_pixel(0x00,0x00,0xff)
     reset_led = True
     set_volume( -1 )
 
@@ -525,37 +531,21 @@ def button_b_release(button, pressed):
 
 @buttonshim.on_press(buttonshim.BUTTON_C)
 def button_c(button, pressed):
-    buttonshim.set_pixel(0x00,0xff,0x00)
+    buttonshim.set_pixel(0x00,0x00,0xff)
     reset_led = True
-    set_octave( +1 )
-
-@buttonshim.on_release(buttonshim.BUTTON_C)
-def button_c_release(button, pressed):
-    reset_playing_channel_leds()
-
+    set_modus( "default" )
 
 @buttonshim.on_press(buttonshim.BUTTON_D)
 def button_d(button, pressed):
-    buttonshim.set_pixel(0x00,0xff,0x00)
+    buttonshim.set_pixel(0x00,0x00,0xff)
     reset_led = True
-    set_octave( -1 )
-
-@buttonshim.on_release(buttonshim.BUTTON_D)
-def button_d_release(button, pressed):
-    reset_playing_channel_leds()
-
+    set_modus( "onoff" )
 
 @buttonshim.on_press(buttonshim.BUTTON_E)
 def button_e(button, pressed):
-    global recording
-    if recording:
-        buttonshim.set_pixel(0x00,0xff,0x00)
-        reset_led = True
-        recording = False
-    else:
-        buttonshim.set_pixel(0xff,0x00,0x00)
-        reset_led = True
-        recording = True
+    buttonshim.set_pixel(0x00,0x00,0xff)
+    reset_led = True
+    set_modus( "chaos" )
 
 
 signal.signal(signal.SIGINT, sigint_handler) # capture ctrl+c
@@ -583,12 +573,13 @@ while running:
     start_time = time.time()
 
 
-    # set buttonshim led, if recording:
     if change_led:
-        if recording:
-            buttonshim.set_pixel(0xff, 0x00, 0x00)
-        else:
-            buttonshim.set_pixel(0xff,0xff,0xff)
+        if modus == "chaos":
+            buttonshim.set_pixel(0xff, 0x00, 0x00) # red
+        elif modus == "onoff":
+            buttonshim.set_pixel(0x00, 0xff, 0x00) # green
+        else: # default
+            buttonshim.set_pixel(0xff, 0xff, 0xff) # white
 
 
     channel_removed = False
