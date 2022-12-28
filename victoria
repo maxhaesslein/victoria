@@ -263,13 +263,24 @@ def play_sound( filename, hat, led ):
             relative_led = channel['led']
 
         if channel['hat'] == hat and relative_led == led:
-            print( '  this  hat/channel already plays a sound')
-            return
+            if modus == "default":
+                print( '  this  hat/channel already plays a sound')
+                return
+            elif modus == "onoff":
+                channel['channel'].fadeout(400)
+                print("  stopping this sound")
+                set_display( '','stopping sound' )
+                return
+            else: # chaos
+                pass
 
     print( '  Playing Sound: {}'.format(filename))
     sound = pygame.mixer.Sound( file=filename )
     channelObj = pygame.mixer.find_channel()
-    channelObj.play( sound, loops=0 )
+    loops_number = 0
+    if modus == "onoff":
+        loops_number = -1
+    channelObj.play( sound, loops=loops_number )
     channelObj.set_volume( global_volume )
 
     if hat == 'piano':
