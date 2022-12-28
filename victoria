@@ -122,6 +122,7 @@ def reset_playing_channel_leds():
         if channel['hat'] != 'pianohat':
             continue
         if sound is not None:
+            print("playing led of this channel: "+str(channel['led']))
             led = channel['led'] - (octave_piano*13)
             if led >= 0 and led < 13:
                 pianohat.set_led( led, True )
@@ -257,14 +258,21 @@ def play_sound( filename, hat, led ):
     global update_channel
 
     for channel in channels:
-        if channel['hat'] == 'piano':
+
+        if channel['hat'] != hat:
+            continue
+
+        if channel['hat'] == 'pianohat':
             relative_led = channel['led'] - (octave_piano*13)
         else:
             relative_led = channel['led']
 
-        if channel['hat'] == hat and relative_led == led:
+        print("led: "+str(led)+" / relative led: "+str(relative_led))
+
+        if relative_led == led:
             if modus == "default":
                 print( '  this  hat/channel already plays a sound')
+                set_display( '','already playing sound' )
                 return
             elif modus == "toggle":
                 channel['channel'].fadeout(400)
@@ -283,7 +291,7 @@ def play_sound( filename, hat, led ):
     channelObj.play( sound, loops=loops_number )
     channelObj.set_volume( global_volume )
 
-    if hat == 'piano':
+    if hat == 'pianohat':
         led_octave = led + (octave_piano*13)
     else:
         led_octave = led
