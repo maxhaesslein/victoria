@@ -117,15 +117,16 @@ def reset_playing_channel_leds():
     for i in range(0, 13):
         pianohat.set_led(i, False)
 
-    for channel in channels:
-        sound = channel['channel'].get_sound()
-        if channel['hat'] != 'pianohat':
-            continue
-        if sound is not None:
-            print("playing led of this channel: "+str(channel['led']))
-            led = channel['led'] - (octave_piano*13)
-            if led >= 0 and led < 13:
-                pianohat.set_led( led, True )
+    if modus == "default" or modus == "toggle":
+        for channel in channels:
+            sound = channel['channel'].get_sound()
+            if channel['hat'] != 'pianohat':
+                continue
+            if sound is not None:
+                print("playing led of this channel: "+str(channel['led']))
+                led = channel['led'] - (octave_piano*13)
+                if led >= 0 and led < 13:
+                    pianohat.set_led( led, True )
 
 
 def handle_note(channel_org, pressed):
@@ -257,37 +258,47 @@ def play_sound( filename, hat, led ):
 
     global update_channel
 
-    for channel in channels:
+    if modus == "default" or modus == "toggle":
 
-        if channel['hat'] != hat:
-            continue
+        for channel in channels:
 
-        if channel['hat'] == 'pianohat':
-            relative_led = channel['led'] - (octave_piano*13)
-        else:
-            relative_led = channel['led']
+            if channel['hat'] != hat:
+                continue
 
-        print("led: "+str(led)+" / relative led: "+str(relative_led))
+            if channel['hat'] == 'pianohat':
+                relative_led = channel['led'] - (octave_piano*13)
+            else:
+                relative_led = channel['led']
 
-        if relative_led == led:
-            if modus == "default":
-                print( '  this  hat/channel already plays a sound')
-                set_display( '','already playing sound' )
-                return
-            elif modus == "toggle":
-                channel['channel'].fadeout(400)
-                print("  stopping this sound")
-                set_display( '','stopping sound' )
-                return
-            else: # chaos
-                pass
+            if relative_led == led:
+                if modus == "default":
+                    print( '  this  hat/channel already plays a sound')
+                    set_display( '','already playing sound' )
+                    return
+                elif modus == "toggle":
+                    channel['channel'].fadeout(400)
+                    print("  stopping this sound")
+                    set_display( '','stopping sound' )
+                    return
+
+    if len(channels) >= options['channels']:
+        print("  no free channel, abort playing")
+
+        if hat == "pianohat":
+            pianohat.set_led( led, False )
+        elif hat == "drumhat":
+            drumhat.led_off( led )
+
+        return
 
     print( '  Playing Sound: {}'.format(filename))
     sound = pygame.mixer.Sound( file=filename )
     channelObj = pygame.mixer.find_channel()
+
     loops_number = 0
     if modus == "toggle":
         loops_number = -1
+
     channelObj.play( sound, loops=loops_number )
     channelObj.set_volume( global_volume )
 
@@ -305,6 +316,12 @@ def play_sound( filename, hat, led ):
 
     channels.append( channel )
     update_channel = True
+
+    if modus == "chaos":
+        if hat == "pianohat":
+            pianohat.set_led( led, False )
+        elif hat == "drumhat":
+            drumhat.led_off( led )
 
 
 def shutdown_action( skip_shutdown ):
@@ -606,14 +623,17 @@ while running:
         sound = channel['channel'].get_sound()
         # if sound is "None" then no sound is playing
         if sound is None:
-            if channel['hat'] == 'pianohat':
-                led = channel['led'] - (octave_piano*13)
-                if led >= 0 and led < 13:
-                    pianohat.set_led( led, False )
-            elif channel['hat'] == 'drumhat':
-                drumhat.led_off( channel['led'] )
+
             channels.remove(channel)
             channel_removed = True
+
+            if modus == "default" or modus == "toggle":
+                if channel['hat'] == 'pianohat':
+                    led = channel['led'] - (octave_piano*13)
+                    if led >= 0 and led < 13:
+                        pianohat.set_led( led, False )
+                elif channel['hat'] == 'drumhat':
+                    drumhat.led_off( channel['led'] )
 
     if channel_removed:
         update_channel = True
