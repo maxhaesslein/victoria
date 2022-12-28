@@ -266,7 +266,7 @@ def play_sound( filename, hat, led ):
             if modus == "default":
                 print( '  this  hat/channel already plays a sound')
                 return
-            elif modus == "onoff":
+            elif modus == "toggle":
                 channel['channel'].fadeout(400)
                 print("  stopping this sound")
                 set_display( '','stopping sound' )
@@ -278,7 +278,7 @@ def play_sound( filename, hat, led ):
     sound = pygame.mixer.Sound( file=filename )
     channelObj = pygame.mixer.find_channel()
     loops_number = 0
-    if modus == "onoff":
+    if modus == "toggle":
         loops_number = -1
     channelObj.play( sound, loops=loops_number )
     channelObj.set_volume( global_volume )
@@ -550,7 +550,7 @@ def button_c(button, pressed):
 def button_d(button, pressed):
     buttonshim.set_pixel(0x00,0x00,0xff)
     reset_led = True
-    set_modus( "onoff" )
+    set_modus( "toggle" )
 
 @buttonshim.on_press(buttonshim.BUTTON_E)
 def button_e(button, pressed):
@@ -587,7 +587,7 @@ while running:
     if change_led:
         if modus == "chaos":
             buttonshim.set_pixel(0xff, 0x00, 0x00) # red
-        elif modus == "onoff":
+        elif modus == "toggle":
             buttonshim.set_pixel(0x00, 0xff, 0x00) # green
         else: # default
             buttonshim.set_pixel(0xff, 0xff, 0xff) # white
